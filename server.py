@@ -11,6 +11,10 @@ __author__ = 'nekocode'
 class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     clients = set()
 
+    def __int__(self):
+        # socket
+        pass
+
     def data_received(self, chunk):
         pass
 
@@ -20,7 +24,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     def send_to_all(message):
         for c in BackdoorSocketHandler.clients:
-            c.write_message(message)
+            c.write_message(json.dumps(message))
 
     def open(self):
         self.write_message('Welcome to WebSocket')
