@@ -1,7 +1,10 @@
+#!/usr/bin/env python
+# coding:utf-8
 import tornado.web
 import tornado.websocket
 import tornado.ioloop
 import json
+from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
 
