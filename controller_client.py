@@ -41,17 +41,20 @@ class ControllerClient(threading.Thread):
 
                 while True:
                     command = raw_input('nbackdoor:')
+                    args_str = command.split(' ')[1:]
 
-                    args_str = command[command.find(' '):]
                     parser = argparse.ArgumentParser(description="nbackdoor by nekocode!!!",
                                                     version='1.0.0',
                                                     formatter_class=argparse.RawTextHelpFormatter,
                                                     epilog='neko!')
                     parser.add_argument("-id", dest='id', type=str, default=None, help="Client to target")
                     parser.add_argument('-jobid', dest='jobid', default=None, type=str, help='Job id to retrieve')
-                    args = parser.parse_args(args_str)
 
-                    parser.print_help()
+                    if len(args_str) == 0:
+                        parser.print_help()
+                        continue
+
+                    args = parser.parse_args(args_str)
 
                     if args.id:
                         print 'run id'
