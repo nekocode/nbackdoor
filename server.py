@@ -28,10 +28,24 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         self.write_message('Welcome to WebSocket')
+        print("open")
         BackdoorSocketHandler.send_to_all(str(id(self)) + ' has joined')
         BackdoorSocketHandler.clients.add(self)
 
     def on_close(self):
+        print("close")
         BackdoorSocketHandler.clients.remove(self)
         BackdoorSocketHandler.send_to_all(str(id(self)) + ' has left')
 
+
+def run_server():
+    application = tornado.web.Application([
+        (r'/', BackdoorSocketHandler)
+    ])
+
+    application.listen(8888)
+    tornado.ioloop.IOLoop.instance().start()
+
+
+if __name__ == '__main__':
+    run_server()
