@@ -47,7 +47,7 @@ class ControllerClient:
                     self.exit = True
 
                 while not self.exit:
-                    input_str = raw_input('nbackdoor:')
+                    input_str = raw_input('\nnbackdoor:')
                     msg = self.command_to_msg(input_str)
                     if msg:
                         self.ws.send(msg)
@@ -70,7 +70,7 @@ class ControllerClient:
 
         if command_str == 'help':
             parser = argparse.ArgumentParser(description="nbackdoor by nekocode!!!",
-                                             version='1.0.0',
+                                             version='0.1.0',
                                              formatter_class=argparse.RawTextHelpFormatter,
                                              epilog='neko!')
             parser.print_help()
