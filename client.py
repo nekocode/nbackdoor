@@ -29,7 +29,7 @@ class BackdoorClient:
         # todo http://stackoverflow.com/questions/3142705/is-there-a-websocket-client-implemented-for-python
         ws = create_connection("ws://localhost:8080/websocket")
         ws.send("Hello, World")
-        result =  ws.recv()
+        result = ws.recv()
         ws.close()
 
     @staticmethod
