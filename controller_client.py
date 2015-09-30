@@ -19,6 +19,7 @@ class ControllerClient:
     def __init__(self):
         self.SERVER_HOST = 'http://127.0.0.1:8888'
         self.HOST_NAME = hostname()
+        self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
@@ -34,7 +35,7 @@ class ControllerClient:
                 os.system('cls')
 
                 pwd = raw_input('Enter the password:')
-                sercret_msg = {'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET), 'pwd': self.encrypt(pwd)}
+                sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET), 'pwd': self.encrypt(pwd)}
                 self.ws.send(json.dumps(sercret_msg))
 
                 msg = json.loads(self.ws.recv())
@@ -56,7 +57,7 @@ class ControllerClient:
                         msg = json.loads(self.ws.recv())
                         if 'data' in msg:
                             data = self.decrypt(msg['data'])
-                            print data + '\n'
+                            print data
 
                 self.ws.close()
 
@@ -92,6 +93,7 @@ class ControllerClient:
             self.exit = True
             return None
         else:
+            print 'Not available command.\n'
             return None
 
         return json.dumps({'cmd': self.encrypt(command)})
