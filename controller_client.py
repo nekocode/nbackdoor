@@ -6,6 +6,8 @@ import ctypes
 import subprocess
 import threading
 import chardet
+from colorama import init
+from colorama import Fore, Back, Style
 import uuid
 import json
 import time
@@ -52,7 +54,7 @@ class ControllerClient:
                     print 'Login success!'
 
                 while not self.exit:
-                    input_str = raw_input('nbackdoor:')
+                    input_str = raw_input(Fore.RED + 'nbackdoor:')
                     msg = self.command_to_msg(input_str)
 
                     if msg:
@@ -150,6 +152,7 @@ def hostname():
         return 'Unkwon hostname'
 
 if __name__ == '__main__':
+    init(autoreset=True)
     client = ControllerClient()
     while not client.exit:
         client.run()
