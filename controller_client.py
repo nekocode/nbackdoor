@@ -65,6 +65,7 @@ class ControllerClient:
                 self.ws.close()
 
             except Exception as e:
+                print e.message
                 if self.ws:
                     self.ws.close()
                 time.sleep(3)
@@ -90,16 +91,7 @@ class ControllerClient:
             command = 'download'
 
         elif command_str == 'dialog':
-            if len(arguments_str) >= 2:
-                target = arguments_str[0]
-                if target.isdigit():
-                    # todo: add from
-                    return json.dumps({'cmd': 'dialog', 'to': target})
-                else:
-                    print 'Traget argument must be int.\n'
-            else:
-                print 'Too few arguments.\n'
-            return None
+            return self._arg2(command_str, arguments_str)
 
         elif command_str == 'screen':
             command = 'screen'
@@ -113,6 +105,23 @@ class ControllerClient:
             return None
 
         return json.dumps({'cmd': command})
+
+    @staticmethod
+    def _arg2(command, arguments_str):
+        json_obj = {'cmd': command}
+
+        if len(arguments_str) >= 2:
+            target = arguments_str[0]
+            if target.isdigit():
+                json_obj['to'] = target
+                json_obj['data'] = arguments_str[1]
+                return json.dumps(json_obj)
+            else:
+                print 'Traget argument must be int.\n'
+        else:
+            print 'Too few arguments.\n'
+
+        return None
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)

