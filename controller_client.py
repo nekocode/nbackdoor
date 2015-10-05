@@ -32,13 +32,19 @@ class ControllerClient:
     def run(self):
         while not self.exit:
             try:
-                print 'Finding server...'
+                print 'Trying to connect server...'
                 self.ws = create_connection("ws://localhost:8888/")
+                print 'Connected!'
 
                 pwd = raw_input('Enter the password: ')
-                sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
-                               'pwd': self.encrypt(pwd)}
-                self.ws.send(json.dumps(sercret_msg))
+
+                try:
+                    sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
+                                   'pwd': self.encrypt(pwd)}
+                    self.ws.send(json.dumps(sercret_msg))
+                except Exception as e:
+                    print 'Connection lose.'
+                    continue
 
                 msg = json.loads(self.decrypt(self.ws.recv()))
                 if 'data' not in msg:
@@ -64,7 +70,8 @@ class ControllerClient:
                 self.ws.close()
 
             except Exception as e:
-                print e.message
+                if e.message:
+                    print e.message
                 if self.ws:
                     self.ws.close()
                 time.sleep(3)
