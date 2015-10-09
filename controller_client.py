@@ -2,17 +2,12 @@
 # -*- coding: utf-8 -*-
 import shlex
 import os
-import ctypes
-import subprocess
-import threading
-import chardet
 from colorama import init
 from colorama import Fore, Back, Style
 import uuid
 import json
 import time
 from base64 import b64decode, b64encode
-import sys
 from websocket import create_connection
 from Crypto.Cipher import AES
 __author__ = 'nekocode'
@@ -20,7 +15,7 @@ __author__ = 'nekocode'
 
 class ControllerClient:
     def __init__(self):
-        self.SERVER_HOST = 'http://127.0.0.1:8888'
+        self.SERVER_HOST = 'ws://192.168.10.3:8888'
         self.HOST_NAME = hostname()
         self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
@@ -33,7 +28,7 @@ class ControllerClient:
         while not self.exit:
             try:
                 print 'Trying to connect server...'
-                self.ws = create_connection("ws://localhost:8888/")
+                self.ws = create_connection(self.SERVER_HOST)
                 print 'Connected!'
 
                 pwd = raw_input('Enter the password: ')

