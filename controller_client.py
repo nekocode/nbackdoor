@@ -7,6 +7,7 @@ from colorama import Fore, Back, Style
 import uuid
 import json
 import time
+from getpass import getpass
 from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
@@ -33,7 +34,7 @@ class ControllerClient:
                 self.ws = create_connection(self.SERVER_HOST)
                 print 'Connected!'
 
-                pwd = pwd_input('Enter the password: ')
+                pwd = getpass('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -120,7 +121,8 @@ DIALOG_TITLE    dialog title
             try:
                 args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
                 return json.dumps({'cmd': command_str, 'to': args['CLINET_ID'],
-                                   'content': args['DIALOG_CONTENT'], 'title': args['DIALOG_TITLE']})
+                                   'content': b64encode(args['DIALOG_CONTENT']),
+                                   'title': None if not args['DIALOG_TITLE'] else b64encode(args['DIALOG_TITLE'])})
             except SystemExit as e:
                 print e.message
                 return None

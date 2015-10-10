@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import chardet
 import ctypes
 import subprocess
 import threading
@@ -76,7 +77,8 @@ class ExecCmd(threading.Thread):
 
     def run(self):
         try:
-            proc = subprocess.Popen(self.command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            proc = subprocess.Popen(self.command, shell=True,
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
             stdout_value = proc.stdout.read()
             stdout_value += proc.stderr.read()
 
@@ -87,9 +89,9 @@ class ExecCmd(threading.Thread):
 class ShowDialog(threading.Thread):
     def __init__(self, msg):
         threading.Thread.__init__(self)
-        self.content = msg['content']
+        self.content = decode2utf(b64decode(msg['content']))
         self.msg = msg
-        self.title = msg['title']
+        self.title = None if not msg['title'] else decode2utf(b64decode(msg['title']))
         if not self.title:
             self.title = u''
 
@@ -98,6 +100,13 @@ class ShowDialog(threading.Thread):
 
     def run(self):
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
+
+
+def decode2utf(rawstr):
+    if chardet.detect(rawstr)['encoding'] != 'ascii':
+        return rawstr.decode('gbk')
+    else:
+        return rawstr
 
 
 def hostname():
