@@ -33,7 +33,7 @@ class ControllerClient:
                 self.ws = create_connection(self.SERVER_HOST)
                 print 'Connected!'
 
-                pwd = raw_input('Enter the password: ')
+                pwd = pwd_input('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -161,6 +161,34 @@ def hostname():
             host.close()
     else:
         return 'Unknow hostname'
+
+
+def pwd_input(msg):
+    print msg,
+
+    import msvcrt
+    chars = []
+    while True:
+        try:
+            new_char = msvcrt.getch().decode(encoding="utf-8")
+        except:
+            return input("你很可能不是在 cmd 命令行下运行，密码输入将不能隐藏:")
+
+        if new_char in '\r\n':  # 如果是换行，则输入结束
+            break
+
+        elif new_char == '\b':  # 如果是退格，则删除密码末尾一位并且删除一个星号
+            if chars:
+                del chars[-1]
+                msvcrt.putch('\b'.encode(encoding='utf-8'))  # 光标回退一格
+                msvcrt.putch( ' '.encode(encoding='utf-8'))  # 输出一个空格覆盖原来的星号
+                msvcrt.putch('\b'.encode(encoding='utf-8'))  # 光标回退一格准备接受新的输入
+        else:
+            chars.append(new_char)
+            msvcrt.putch('*'.encode(encoding='utf-8'))  # 显示为星号
+
+    print
+    return ''.join(chars)
 
 
 def run_controller():
