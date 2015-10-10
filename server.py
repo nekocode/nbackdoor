@@ -76,7 +76,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                             self.send_data('OK.\n')
 
                         else:
-                            self.send_data('Should not send command to controller.\n')
+                            self.send_data('Should not send control command to controller.\n')
 
                     else:
                         self.send_data('Not available target.\n')

