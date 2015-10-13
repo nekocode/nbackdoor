@@ -31,37 +31,62 @@ class WebscoketOutput(object):
 
 
 class Input(threading.Thread):
-    def __init__(self, proc, ):
+    def __init__(self, proc):
         threading.Thread.__init__(self)
+
+        self.need_exit = False
+        self.proc = proc
 
         self.daemon = True
         self.start()
 
     def run(self):
+        # stdin_input = sys.stdin.readline()
+        # while stdin_input:
+        #     self.proc.stdin.write(stdin_input)
+        #     stdin_input = sys.stdin.readline()
         pass
+
+
+def print_out(proc):
+    data = proc.stdout.read(1)
+    sys.stdout.write(data)
+    sys.stdout.flush()
+    while data:
+        data = proc.stdout.read(1)
+        sys.stdout.write(data)
+        sys.stdout.flush()
+
+
+def print_err(proc):
+    data = proc.stderr.read(1)
+    sys.stdout.write(data)
+    sys.stdout.flush()
+    while data:
+        data = proc.stderr.read(1)
+        sys.stdout.write(data)
+        sys.stdout.flush()
 
 
 def main():
     ws = create_connection('ws://localhost:8888')
 
     while True:
-
         cmd_input = raw_input('cmd> ')
         if cmd_input == 'exit':
             break
 
-        proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+        proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
         Input(proc)
 
-        data = proc.stdout.read(1)
-        sys.stdout.write(data)
-        sys.stdout.flush()
-        while data:
-            data = proc.stdout.read(1)
-            sys.stdout.write(data)
-            sys.stdout.flush()
+        print_out(proc)
+        print_err(proc)
 
-        proc.wait()
+        # while True:
+        #     data = sys.stdin.read(1)
+        #
+        #     proc.stdin.write(data)
+        #     proc.stdin.flush()
 
 
 if __name__ == '__main__':
