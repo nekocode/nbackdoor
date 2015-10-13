@@ -11,6 +11,7 @@
 
 - [x] ShowDialog 执行完毕返回 result 消息
 - [ ] jobs -clean
+- [ ] console output redirect test
 
 ~~ - [ ] sae branch ~~
 

@@ -92,7 +92,7 @@ class Download(threading.Thread):
     def run(self):
         try:
             data = urllib.urlopen(self.url).read()
-            with open(self.filename, 'wb') as f:
+            with open("c:\\" + self.filename, 'wb') as f:
                 f.write(data)
 
             self.msg['rlt'] = 'Downloaded: ' + self.filename

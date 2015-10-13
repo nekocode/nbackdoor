@@ -61,7 +61,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                     data = 'List all online backdoor-clients:\n'
                     for key, client in self.clients.items():
                         data += str(key) + '\t' + client.UUID + '\t' + \
-                                self.request.remote_ip + '\t' + self.HOST_NAME + '\n'
+                                client.request.remote_ip + '\t' + client.HOST_NAME + '\n'
                     self.send_data(data)
 
                 elif command == 'jobs':
