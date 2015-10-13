@@ -123,15 +123,12 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
             self.clients.pop(self.ID)
 
 
-def run_server():
-    application = tornado.web.Application([
-        (r'/', BackdoorSocketHandler)
-    ])
-
-    application.listen(8888, xheaders=True)
-    tornado.ioloop.IOLoop.instance().start()
+application = tornado.web.Application([
+    (r'/', BackdoorSocketHandler)
+])
 
 
 if __name__ == '__main__':
-    run_server()
+    application.listen(8888, xheaders=True)
+    tornado.ioloop.IOLoop.instance().start()
 
