@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import shlex
 import os
+import threading
 from colorama import init
 from colorama import Fore, Back, Style
 import uuid
@@ -129,6 +130,26 @@ class ControllerClient:
 
     def send_char(self, char):
         self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char)})))
+
+
+class InputSender(threading.Thread):
+    def __init__(self, client):
+        threading.Thread.__init__(self)
+
+        self.client = client
+        self.send_char = client.send_char
+
+        self.exit = False
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while not self.exit:
+            char = sys.stdin.read(1)
+            while char:
+                self.send_char(char)
+
+                char = sys.stdin.read(1)
 
 
 def hostname():

@@ -52,8 +52,27 @@ def print_err(proc):
         sys.stdout.flush()
 
 
+class Test(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while True:
+            # sys.stdout.write('_')
+            char = sys.stdin.read()
+            sys.stdout.write(' -' + char + '- ')
+
+
 def main():
     # ws = create_connection('ws://localhost:8888')
+
+    Test()
+    while True:
+        line = raw_input('input: ')
+        # print line
 
     while True:
         cmd_input = raw_input('cmd> ')
