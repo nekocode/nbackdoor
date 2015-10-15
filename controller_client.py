@@ -9,6 +9,7 @@ import json
 import time
 # from getpass import getpass
 from base64 import b64decode, b64encode
+import sys
 from websocket import create_connection
 from Crypto.Cipher import AES
 from _docpot import docopt
@@ -17,6 +18,10 @@ __author__ = 'nekocode'
 
 def get_data(msg):
     return b64decode(msg['data'])
+
+
+def get_char(msg):
+    return b64decode(msg['char'])
 
 
 class ControllerClient:
@@ -84,12 +89,24 @@ class ControllerClient:
 
                             msg_recv = json.loads(self.decrypt(self.ws.recv()))
 
+                    elif 'char' in msg_recv:
+                        while 'char' in msg_recv and 'end' not in msg_recv:
+                            char = get_char(msg_recv)
+                            sys.stdout.write(char)
+                            sys.stdout.flush()
+
+                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
                     elif 'connected' in msg_recv:
                         self.to_client = msg_recv['connected']
                         print 'Connected to client ' + str(self.to_client) + '.\n'
                     elif 'disconnected' in msg_recv:
-                        self.to_client = None
-                        print 'Disconnected success.\n'
+                        if msg_recv['disconnected'] == 'offline':
+                            self.to_client = None
+                            print 'Client Offline.\n'
+                        else:
+                            self.to_client = None
+                            print 'Disconnected success.\n'
 
                 self.ws.close()
 
@@ -109,6 +126,9 @@ class ControllerClient:
         decryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
         plain = decryptor.decrypt(ciphertext)
         return plain
+
+    def send_char(self, char):
+        self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char)})))
 
 
 def hostname():

