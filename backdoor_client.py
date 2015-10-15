@@ -119,6 +119,7 @@ class BufSender(threading.Thread):
         self.time_count = 0
 
         self.exit = False
+        self.exited = False
         self.daemon = True
         self.start()
 
@@ -136,6 +137,8 @@ class BufSender(threading.Thread):
                         self.flush = True
 
                     self.time_count = 0
+
+        self.exited = True
 
 
 class Cmd(threading.Thread):
@@ -176,7 +179,7 @@ class Cmd(threading.Thread):
                 char = proc.stderr.read(1)
                 self.buf_sender.buf += char
                 while char:
-                    data = proc.stderr.read(1)
+                    char = proc.stderr.read(1)
                     self.buf_sender.buf += char
 
                 proc.wait()
@@ -186,6 +189,8 @@ class Cmd(threading.Thread):
                     time.sleep(0.1)
 
                 self.send_end(self.to_controler)
+
+            self.buf_sender.exit = True
 
         except Exception as e:
             self.send_data('ERROR: ' + e.message, self.to_controler)
