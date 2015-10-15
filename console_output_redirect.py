@@ -2,12 +2,22 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+import time
 from subprocess import Popen, PIPE
 import threading
+import signal
+import msvcrt
+import StringIO
 from websocket import create_connection
 
 __author__ = 'nekocode'
 
+
+def signal_handler(signal, frame):
+    pass
+    # data = raw_input("data: ")
+    # print data
+signal.signal(signal.SIGINT, signal_handler)
 
 class WebscoketOutput(object):
     def __init__(self, websocket):
@@ -51,7 +61,9 @@ def print_err(proc):
         sys.stdout.write(data)
         sys.stdout.flush()
 
-
+r, w = os.pipe()
+r = os.fdopen(r, 'r')
+w = os.fdopen(w, 'w')
 class Test(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -61,20 +73,19 @@ class Test(threading.Thread):
 
     def run(self):
         while True:
-            # sys.stdout.write('_')
-            char = sys.stdin.read()
-            sys.stdout.write(' -' + char + '- ')
+            time.sleep(1)
+
+            # w.write('a')
+            # w.flush()
 
 
 def main():
     # ws = create_connection('ws://localhost:8888')
 
     Test()
-    while True:
-        line = raw_input('input: ')
-        # print line
 
     while True:
+        time.sleep(1000)
         cmd_input = raw_input('cmd> ')
         if cmd_input == 'exit':
             break
@@ -82,7 +93,7 @@ def main():
             print u'已经处于命令行模式'
             continue
 
-        proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
+        proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=r)
 
         print_out(proc)
         print_err(proc)

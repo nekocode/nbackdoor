@@ -19,6 +19,8 @@
 - [x] arguments splite
 - [ ] 获取动态服务器 ip
 
+- [ ] 考虑 pre_send_char ?
+
 ## tofix
 - [x] 执行 ShowDialog 命令，参数使用中文字符串失败
 
