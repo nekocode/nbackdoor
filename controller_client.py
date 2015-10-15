@@ -46,10 +46,10 @@ class ControllerClient:
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
-                                   'pwd': self.encrypt(pwd)}
-                    self.ws.send(json.dumps(sercret_msg))
+                                   'pwd': b64encode(self.encrypt(pwd))}
+                    self.ws.send_binary(json.dumps(sercret_msg))
                 except Exception as e:
-                    print 'Connection lose.'
+                    print 'Connection lose:' + e.message
                     continue
 
                 msg = json.loads(self.decrypt(self.ws.recv()))
@@ -74,7 +74,7 @@ class ControllerClient:
                         break
 
                     msg = json.dumps({'cmd': b64encode(input_str)})
-                    self.ws.send(self.encrypt(msg))
+                    self.ws.send_binary(self.encrypt(msg))
 
                     msg_recv = json.loads(self.decrypt(self.ws.recv()))
                     if 'data' in msg_recv:
@@ -103,11 +103,11 @@ class ControllerClient:
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
         ciphertext = encryptor.encrypt(text)
-        return b64encode(ciphertext)
+        return ciphertext
 
     def decrypt(self, ciphertext):
         decryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
-        plain = decryptor.decrypt(b64decode(ciphertext))
+        plain = decryptor.decrypt(ciphertext)
         return plain
 
 

