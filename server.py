@@ -85,6 +85,9 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                         to_controler = self.clients[to]
                         to_controler.to_client_id = self.ID
                         to_controler.send_json(msg)
+            elif self.is_controller and 'char' in msg:
+                to_client = self.clients[self.to_client_id]
+                to_client.send_json(msg)
 
         else:
             # =====================
