@@ -125,7 +125,7 @@ class BackdoorClient(threading.Thread):
 
 
 class BufSender(threading.Thread):
-    BUF_SIZE = 10
+    BUF_SIZE = 1024
 
     def __init__(self, client, to_controler):
         threading.Thread.__init__(self)
