@@ -23,6 +23,17 @@
 
 ## note
 [pyinstaller](https://github.com/pyinstaller/pyinstaller)
+[cmd shell -> ftp upload](http://home.51.com/xiaobai521100/diary/item/10008446.html)
+
+
+## useful cmds
+```
+shutdown -s -f
+taskkill /f /pid
+tasklist
+echo line1 > 1.txt
+echo line2 >> 1.txt
+```
 
 ## give up
 - [ ] backdoor 端使用 Windows Services 后台执行：https://github.com/Skycrab/pymgr

