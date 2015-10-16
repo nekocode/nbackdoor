@@ -12,7 +12,8 @@
 - [x] arguments splite
 
 - [ ] 获取动态服务器 ip
-- [ ] ctrl c 处理
+- [x] esc 终止运行中的命令
+- [ ] send_data 和 send_char 融合
 
 ## tofix
 - [x] 执行 ShowDialog 命令，参数使用中文字符串失败

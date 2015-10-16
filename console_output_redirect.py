@@ -82,6 +82,19 @@ class Test(threading.Thread):
 def main():
     # ws = create_connection('ws://localhost:8888')
 
+    def signal_handler(_signal, _frame):
+        print 'ctrl-c'
+
+    signal.signal(signal.SIGINT, signal_handler)
+    while True:
+        try:
+            char = sys.stdin.read(1)
+        except:
+            pass
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    sys.exit(0)
+
     Test()
 
     while True:

