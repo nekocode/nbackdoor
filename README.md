@@ -11,7 +11,7 @@
 - [x] transfer buf (for 'chars')
 - [x] arguments splite
 
-- [ ] 获取动态服务器 ip
+- [x] 获取动态服务器 ip
 - [x] esc 终止运行中的命令
 - [ ] send_data 和 send_char 融合
 
