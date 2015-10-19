@@ -22,8 +22,8 @@
 
 
 ## note
-[pyinstaller](https://github.com/pyinstaller/pyinstaller)
-[cmd shell -> ftp upload](http://home.51.com/xiaobai521100/diary/item/10008446.html)
+- [pyinstaller](https://github.com/pyinstaller/pyinstaller)
+- [cmd shell -> ftp upload](http://home.51.com/xiaobai521100/diary/item/10008446.html)
 
 
 ## useful cmds
@@ -33,6 +33,15 @@ taskkill /f /pid
 tasklist
 echo line1 > 1.txt
 echo line2 >> 1.txt
+
+echo open [ftp host] > ftp.txt
+echo [account]>> ftp.txt
+echo [password]>> ftp.txt
+echo binary >> ftp.txt
+echo get [download file] >> ftp.txt
+echo bye >> ftp.txt
+
+ftp -s:ftp.txt
 ```
 
 ## give up
