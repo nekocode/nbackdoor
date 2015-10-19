@@ -1,6 +1,24 @@
 # nbackdoor
 **backdoor system**
 
+### Refactor!
+- new branch!
+- Framework: directly controler to client
+- use normal socket to replace websocket
+- job pools
+- tools set：
+  - Remote Desktop Protocol
+  - ftp server
+  - [PowerShell](http://drops.wooyun.org/tips/6090)
+  - other usefull bat
+  - ...
+
+- 管理员权限，绕过UAC
+- auto run
+- box to installer
+- ...
+
+
 ### todo
 - [x] 添加 from 字段
 - [x] 安全密码输入
@@ -10,7 +28,6 @@
 - [x] console output redirect test
 - [x] transfer buf (for 'chars')
 - [x] arguments splite
-
 - [x] 获取动态服务器 ip
 - [x] esc 终止运行中的命令
 - [ ] send_data 和 send_char 融合

