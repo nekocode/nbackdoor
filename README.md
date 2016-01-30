@@ -1,32 +1,22 @@
 # nbackdoor
-**backdoor system**
+> **nbackdoor** 是一个使用命令行进行远程控制的系统  
+> （Dev 分支正在尝试进行重构）
 
-### Refactoring on the dev branch
-- directly controler to client
-- use normal socket to replace websocket
-- job pools
-- tools set：
-  - Remote Desktop Protocol
-  - ftp server
-  - [PowerShell](http://drops.wooyun.org/tips/6090)
-  - other usefull bat scripts
-  - ...
-
-- 管理员权限，绕过 UAC
-- auto run
-- auto pack to installer
-- ...
+## feature
+- 使用 Python 编写
+- 使用 Job Pool 进行任务调度
+- 绕过 Windows 的 UAC 机制获得管理员权限
+- 自动感染系统加入自启动项
 
 
 ### todo
 - [x] 添加 from 字段
 - [x] 安全密码输入
-- [x] command-line help messages：https://github.com/docopt/docopt
+- [x] 命令行帮助信息：https://github.com/docopt/docopt
 - [x] 下载文件
 - [x] ShowDialog 执行完毕返回 result 消息
-- [x] console output redirect test
-- [x] transfer buf (for 'chars')
-- [x] arguments splite
+- [x] 缓冲传输回显字符
+- [x] 参数分割
 - [x] 获取动态服务器 ip
 - [x] esc 终止运行中的命令
 - [ ] send_data 和 send_char 融合
